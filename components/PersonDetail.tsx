@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Person, RecordType, HealthRecord, TodoItem, Note, FinancialRecord, User, SharingPreference } from '../types';
 import { Avatar, Button, Card, Icon, Badge, Modal, Toggle, Input, TextArea } from './Shared';
-import { ShareButton } from './ShareComponents';
 
 interface PersonDetailProps {
   person: Person;
@@ -11,23 +10,26 @@ interface PersonDetailProps {
   onBack: () => void;
   onUpdatePerson: (updatedPerson: Person) => void;
   onDeletePerson: (personId: string) => void;
-  onAddTodo: (personId: string, title: string, date: string, priority?: string, description?: string) => void;
-  onUpdateTodo: (todoId: string, updates: { title?: string; dueDate?: string; priority?: string; description?: string; isCompleted?: boolean }) => void;
+  onAddTodo: (personId: string, title: string, date: string, priority?: string, description?: string, sharedWithCollaboratorIds?: string[]) => void;
+  onUpdateTodo: (todoId: string, updates: { title?: string; dueDate?: string; priority?: string; description?: string; isCompleted?: boolean; sharedWithCollaboratorIds?: string[] }) => void;
   onDeleteTodo: (todoId: string) => void;
   onToggleTodo: (todoId: string, isCompleted: boolean) => void;
-  onAddHealth: (personId: string, title: string, date: string, notes: string, type: string, files?: File[]) => void;
-  onUpdateHealth: (recordId: string, updates: { title?: string; date?: string; notes?: string; type?: string }) => void;
+  onAddHealth: (personId: string, title: string, date: string, notes: string, type: string, files?: File[], sharedWithCollaboratorIds?: string[]) => void;
+  onUpdateHealth: (recordId: string, updates: { title?: string; date?: string; notes?: string; type?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDeleteHealth: (recordId: string) => void;
-  onAddNote: (personId: string, title: string, content: string) => void;
-  onUpdateNote: (noteId: string, updates: { title?: string; content?: string }) => void;
+  onAddNote: (personId: string, title: string, content: string, sharedWithCollaboratorIds?: string[]) => void;
+  onUpdateNote: (noteId: string, updates: { title?: string; content?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDeleteNote: (noteId: string) => void;
-  onAddFinance: (personId: string, title: string, amount: number, type: string, date: string) => void;
-  onUpdateFinance: (recordId: string, updates: { title?: string; amount?: number; type?: string; date?: string }) => void;
+  onAddFinance: (personId: string, title: string, amount: number, type: string, date: string, sharedWithCollaboratorIds?: string[]) => void;
+  onUpdateFinance: (recordId: string, updates: { title?: string; amount?: number; type?: string; date?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDeleteFinance: (recordId: string) => void;
   onUploadAvatar: (personId: string, file: File) => Promise<void>;
   // Sharing
   onShareRecord?: (recordType: 'TODO' | 'HEALTH' | 'NOTE' | 'FINANCE', recordId: string, sourcePersonId: string, email: string) => Promise<void>;
   onUnshareRecord?: (shareId: string) => Promise<void>;
+  // Collaboration
+  onLinkToUser?: (personId: string, userId: string) => Promise<void>;
+  onSendCollaborationRequest?: (personId: string, targetUserId?: string, targetEmail?: string) => Promise<void>;
 }
 
 // --- Edit Profile Modal ---
@@ -37,11 +39,47 @@ const EditProfileModal: React.FC<{
   person: Person;
   onUpdate: (updatedPerson: Person) => void;
   onDelete: () => void;
-}> = ({ isOpen, onClose, person, onUpdate, onDelete }) => {
+  onLinkToUser?: (personId: string, userId: string) => Promise<void>;
+}> = ({ isOpen, onClose, person, onUpdate, onDelete, onLinkToUser }) => {
   const [name, setName] = useState(person.name);
   const [relation, setRelation] = useState(person.relation);
   const [birthday, setBirthday] = useState(person.birthday || '');
+  const [email, setEmail] = useState(person.email || '');
+  const [linkSearchEmail, setLinkSearchEmail] = useState('');
+  const [linkSearchResults, setLinkSearchResults] = useState<Array<{ id: string; email: string; full_name: string }>>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Search for users by email
+  const searchUsers = async (searchEmail: string) => {
+    if (!searchEmail || searchEmail.length < 3) {
+      setLinkSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const { supabase } = await import('../src/lib/supabase');
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .ilike('email', `%${searchEmail}%`)
+        .limit(5);
+      if (!error && data) {
+        setLinkSearchResults(data);
+      }
+    } catch (err) {
+      console.error('Error searching users:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchUsers(linkSearchEmail);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [linkSearchEmail]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +87,22 @@ const EditProfileModal: React.FC<{
       ...person,
       name,
       relation,
-      birthday
+      birthday,
+      email: email || undefined
     });
     onClose();
+  };
+
+  const handleLinkToUser = async (userId: string) => {
+    if (onLinkToUser) {
+      await onLinkToUser(person.id, userId);
+      onUpdate({
+        ...person,
+        linkedUserId: userId
+      });
+      setLinkSearchEmail('');
+      setLinkSearchResults([]);
+    }
   };
 
   if (showDeleteConfirm) {
@@ -75,6 +126,51 @@ const EditProfileModal: React.FC<{
         <Input label="Name" value={name} onChange={e => setName(e.target.value)} />
         <Input label="Relation" value={relation} onChange={e => setRelation(e.target.value)} />
         <Input label="Birthday" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
+        <Input label="Email (Optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+        
+        {/* Link to Account Section */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Link to Account</label>
+          {person.linkedUserId ? (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+              <Icon name="check_circle" className="inline mr-2" />
+              Profile is linked to an account
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                placeholder="Search by email..."
+                value={linkSearchEmail}
+                onChange={e => setLinkSearchEmail(e.target.value)}
+                type="email"
+              />
+              {isSearching && (
+                <div className="text-xs text-stone-400">Searching...</div>
+              )}
+              {linkSearchResults.length > 0 && (
+                <div className="border border-stone-200 rounded-xl overflow-hidden">
+                  {linkSearchResults.map(user => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => handleLinkToUser(user.id)}
+                      className="w-full p-3 text-left hover:bg-stone-50 border-b border-stone-100 last:border-b-0 flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                        {(user.full_name || user.email || 'U')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-stone-800">{user.full_name || 'No name'}</p>
+                        <p className="text-xs text-stone-500">{user.email}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-between pt-4">
           <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} type="button">Delete Person</Button>
           <div className="flex gap-2">
@@ -92,19 +188,63 @@ const EditTodoModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   todo: TodoItem;
-  onUpdate: (updates: { title?: string; dueDate?: string; priority?: string; description?: string }) => void;
+  person: Person;
+  onUpdate: (updates: { title?: string; dueDate?: string; priority?: string; description?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDelete: () => void;
-}> = ({ isOpen, onClose, todo, onUpdate, onDelete }) => {
+}> = ({ isOpen, onClose, todo, person, onUpdate, onDelete }) => {
   const [title, setTitle] = useState(todo.title);
   const [dueDate, setDueDate] = useState(todo.dueDate);
   const [priority, setPriority] = useState(todo.priority);
   const [description, setDescription] = useState(todo.description || '');
+  const [share, setShare] = useState((todo.sharedWithCollaboratorIds?.length || 0) > 0);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>(todo.sharedWithCollaboratorIds || []);
+  const [acceptedCollaborators, setAcceptedCollaborators] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCollaborators = async () => {
+        try {
+          const { supabase } = await import('../src/lib/supabase');
+          const { data, error } = await supabase
+            .from('person_shares')
+            .select('id, user_id, user_email, profiles(full_name, email)')
+            .eq('person_id', person.id)
+            .not('user_id', 'is', null);
+
+          if (!error && data) {
+            setAcceptedCollaborators(data.map(share => ({
+              id: share.id,
+              name: (share.profiles as any)?.full_name || share.user_email || 'Unknown',
+              email: (share.profiles as any)?.email || share.user_email
+            })));
+          }
+        } catch (err) {
+          console.error('Error fetching collaborators:', err);
+        }
+      };
+      fetchCollaborators();
+    }
+  }, [isOpen, person.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdate({ title, dueDate, priority, description });
+    onUpdate({ 
+      title, 
+      dueDate, 
+      priority, 
+      description,
+      sharedWithCollaboratorIds: share ? selectedCollaboratorIds : undefined
+    });
     onClose();
+  };
+
+  const toggleCollaborator = (collabId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(collabId)
+        ? prev.filter(id => id !== collabId)
+        : [...prev, collabId]
+    );
   };
 
   if (showDeleteConfirm) {
@@ -139,6 +279,51 @@ const EditTodoModal: React.FC<{
           </select>
         </div>
         <TextArea label="Description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Add more details..." />
+        
+        <div className="pt-4 border-t border-stone-100">
+          <Toggle
+            checked={share}
+            onChange={setShare}
+            label="Share with Collaborators?"
+          />
+          {share && acceptedCollaborators.length > 0 && (
+            <div className="mt-3 pl-[52px]">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {acceptedCollaborators.map(collab => (
+                  <label
+                    key={collab.id}
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
+                      selectedCollaboratorIds.includes(collab.id)
+                        ? 'bg-indigo-100 border-2 border-indigo-300'
+                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollaboratorIds.includes(collab.id)}
+                      onChange={() => toggleCollaborator(collab.id)}
+                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                      {collab.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {share && acceptedCollaborators.length === 0 && (
+            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+              No accepted collaborators yet.
+            </p>
+          )}
+        </div>
+
         <div className="flex justify-between pt-4">
           <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} type="button">Delete</Button>
           <div className="flex gap-2">
@@ -156,19 +341,63 @@ const EditHealthModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   record: HealthRecord;
-  onUpdate: (updates: { title?: string; date?: string; notes?: string; type?: string }) => void;
+  person: Person;
+  onUpdate: (updates: { title?: string; date?: string; notes?: string; type?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDelete: () => void;
-}> = ({ isOpen, onClose, record, onUpdate, onDelete }) => {
+}> = ({ isOpen, onClose, record, person, onUpdate, onDelete }) => {
   const [title, setTitle] = useState(record.title);
   const [date, setDate] = useState(record.date);
   const [notes, setNotes] = useState(record.notes);
   const [type, setType] = useState(record.type);
+  const [share, setShare] = useState((record.sharedWithCollaboratorIds?.length || 0) > 0);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>(record.sharedWithCollaboratorIds || []);
+  const [acceptedCollaborators, setAcceptedCollaborators] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCollaborators = async () => {
+        try {
+          const { supabase } = await import('../src/lib/supabase');
+          const { data, error } = await supabase
+            .from('person_shares')
+            .select('id, user_id, user_email, profiles(full_name, email)')
+            .eq('person_id', person.id)
+            .not('user_id', 'is', null);
+
+          if (!error && data) {
+            setAcceptedCollaborators(data.map(share => ({
+              id: share.id,
+              name: (share.profiles as any)?.full_name || share.user_email || 'Unknown',
+              email: (share.profiles as any)?.email || share.user_email
+            })));
+          }
+        } catch (err) {
+          console.error('Error fetching collaborators:', err);
+        }
+      };
+      fetchCollaborators();
+    }
+  }, [isOpen, person.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdate({ title, date, notes, type });
+    onUpdate({ 
+      title, 
+      date, 
+      notes, 
+      type,
+      sharedWithCollaboratorIds: share ? selectedCollaboratorIds : undefined
+    });
     onClose();
+  };
+
+  const toggleCollaborator = (collabId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(collabId)
+        ? prev.filter(id => id !== collabId)
+        : [...prev, collabId]
+    );
   };
 
   if (showDeleteConfirm) {
@@ -204,6 +433,51 @@ const EditHealthModal: React.FC<{
           </select>
         </div>
         <TextArea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
+        
+        <div className="pt-4 border-t border-stone-100">
+          <Toggle
+            checked={share}
+            onChange={setShare}
+            label="Share with Collaborators?"
+          />
+          {share && acceptedCollaborators.length > 0 && (
+            <div className="mt-3 pl-[52px]">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {acceptedCollaborators.map(collab => (
+                  <label
+                    key={collab.id}
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
+                      selectedCollaboratorIds.includes(collab.id)
+                        ? 'bg-indigo-100 border-2 border-indigo-300'
+                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollaboratorIds.includes(collab.id)}
+                      onChange={() => toggleCollaborator(collab.id)}
+                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                      {collab.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {share && acceptedCollaborators.length === 0 && (
+            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+              No accepted collaborators yet.
+            </p>
+          )}
+        </div>
+
         <div className="flex justify-between pt-4">
           <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} type="button">Delete</Button>
           <div className="flex gap-2">
@@ -221,17 +495,59 @@ const EditNoteModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   note: Note;
-  onUpdate: (updates: { title?: string; content?: string }) => void;
+  person: Person;
+  onUpdate: (updates: { title?: string; content?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDelete: () => void;
-}> = ({ isOpen, onClose, note, onUpdate, onDelete }) => {
+}> = ({ isOpen, onClose, note, person, onUpdate, onDelete }) => {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
+  const [share, setShare] = useState((note.sharedWithCollaboratorIds?.length || 0) > 0);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>(note.sharedWithCollaboratorIds || []);
+  const [acceptedCollaborators, setAcceptedCollaborators] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCollaborators = async () => {
+        try {
+          const { supabase } = await import('../src/lib/supabase');
+          const { data, error } = await supabase
+            .from('person_shares')
+            .select('id, user_id, user_email, profiles(full_name, email)')
+            .eq('person_id', person.id)
+            .not('user_id', 'is', null);
+
+          if (!error && data) {
+            setAcceptedCollaborators(data.map(share => ({
+              id: share.id,
+              name: (share.profiles as any)?.full_name || share.user_email || 'Unknown',
+              email: (share.profiles as any)?.email || share.user_email
+            })));
+          }
+        } catch (err) {
+          console.error('Error fetching collaborators:', err);
+        }
+      };
+      fetchCollaborators();
+    }
+  }, [isOpen, person.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdate({ title, content });
+    onUpdate({ 
+      title, 
+      content,
+      sharedWithCollaboratorIds: share ? selectedCollaboratorIds : undefined
+    });
     onClose();
+  };
+
+  const toggleCollaborator = (collabId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(collabId)
+        ? prev.filter(id => id !== collabId)
+        : [...prev, collabId]
+    );
   };
 
   if (showDeleteConfirm) {
@@ -253,6 +569,51 @@ const EditNoteModal: React.FC<{
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Title" value={title} onChange={e => setTitle(e.target.value)} />
         <TextArea label="Content" value={content} onChange={e => setContent(e.target.value)} />
+        
+        <div className="pt-4 border-t border-stone-100">
+          <Toggle
+            checked={share}
+            onChange={setShare}
+            label="Share with Collaborators?"
+          />
+          {share && acceptedCollaborators.length > 0 && (
+            <div className="mt-3 pl-[52px]">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {acceptedCollaborators.map(collab => (
+                  <label
+                    key={collab.id}
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
+                      selectedCollaboratorIds.includes(collab.id)
+                        ? 'bg-indigo-100 border-2 border-indigo-300'
+                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollaboratorIds.includes(collab.id)}
+                      onChange={() => toggleCollaborator(collab.id)}
+                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                      {collab.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {share && acceptedCollaborators.length === 0 && (
+            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+              No accepted collaborators yet.
+            </p>
+          )}
+        </div>
+
         <div className="flex justify-between pt-4">
           <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} type="button">Delete</Button>
           <div className="flex gap-2">
@@ -270,19 +631,63 @@ const EditFinanceModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   record: FinancialRecord;
-  onUpdate: (updates: { title?: string; amount?: number; type?: string; date?: string }) => void;
+  person: Person;
+  onUpdate: (updates: { title?: string; amount?: number; type?: string; date?: string; sharedWithCollaboratorIds?: string[] }) => void;
   onDelete: () => void;
-}> = ({ isOpen, onClose, record, onUpdate, onDelete }) => {
+}> = ({ isOpen, onClose, record, person, onUpdate, onDelete }) => {
   const [title, setTitle] = useState(record.title);
   const [amount, setAmount] = useState(record.amount.toString());
   const [type, setType] = useState(record.type);
   const [date, setDate] = useState(record.date);
+  const [share, setShare] = useState((record.sharedWithCollaboratorIds?.length || 0) > 0);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>(record.sharedWithCollaboratorIds || []);
+  const [acceptedCollaborators, setAcceptedCollaborators] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCollaborators = async () => {
+        try {
+          const { supabase } = await import('../src/lib/supabase');
+          const { data, error } = await supabase
+            .from('person_shares')
+            .select('id, user_id, user_email, profiles(full_name, email)')
+            .eq('person_id', person.id)
+            .not('user_id', 'is', null);
+
+          if (!error && data) {
+            setAcceptedCollaborators(data.map(share => ({
+              id: share.id,
+              name: (share.profiles as any)?.full_name || share.user_email || 'Unknown',
+              email: (share.profiles as any)?.email || share.user_email
+            })));
+          }
+        } catch (err) {
+          console.error('Error fetching collaborators:', err);
+        }
+      };
+      fetchCollaborators();
+    }
+  }, [isOpen, person.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdate({ title, amount: parseFloat(amount), type, date });
+    onUpdate({ 
+      title, 
+      amount: parseFloat(amount), 
+      type, 
+      date,
+      sharedWithCollaboratorIds: share ? selectedCollaboratorIds : undefined
+    });
     onClose();
+  };
+
+  const toggleCollaborator = (collabId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(collabId)
+        ? prev.filter(id => id !== collabId)
+        : [...prev, collabId]
+    );
   };
 
   if (showDeleteConfirm) {
@@ -322,6 +727,51 @@ const EditFinanceModal: React.FC<{
           </div>
         </div>
         <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+        
+        <div className="pt-4 border-t border-stone-100">
+          <Toggle
+            checked={share}
+            onChange={setShare}
+            label="Share with Collaborators?"
+          />
+          {share && acceptedCollaborators.length > 0 && (
+            <div className="mt-3 pl-[52px]">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {acceptedCollaborators.map(collab => (
+                  <label
+                    key={collab.id}
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
+                      selectedCollaboratorIds.includes(collab.id)
+                        ? 'bg-indigo-100 border-2 border-indigo-300'
+                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollaboratorIds.includes(collab.id)}
+                      onChange={() => toggleCollaborator(collab.id)}
+                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                      {collab.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {share && acceptedCollaborators.length === 0 && (
+            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+              No accepted collaborators yet.
+            </p>
+          )}
+        </div>
+
         <div className="flex justify-between pt-4">
           <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} type="button">Delete</Button>
           <div className="flex gap-2">
@@ -588,17 +1038,6 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {onShareRecord && onUnshareRecord && (
-                          <ShareButton
-                            recordType={RecordType.HEALTH}
-                            recordId={record.id}
-                            personId={person.id}
-                            shares={record.shares}
-                            collaborators={person.collaborators}
-                            onShare={(type, id, email) => onShareRecord('HEALTH', id, person.id, email)}
-                            onUnshare={onUnshareRecord}
-                          />
-                        )}
                         <Icon name="chevron_right" className="text-stone-300 group-hover:text-stone-500" />
                       </div>
                     </div>
@@ -647,17 +1086,6 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                       <p className="text-xs text-stone-400 mt-1">Due {todo.dueDate}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      {onShareRecord && onUnshareRecord && (
-                        <ShareButton
-                          recordType={RecordType.TODO}
-                          recordId={todo.id}
-                          personId={person.id}
-                          shares={todo.shares}
-                          collaborators={person.collaborators}
-                          onShare={(type, id, email) => onShareRecord('TODO', id, person.id, email)}
-                          onUnshare={onUnshareRecord}
-                        />
-                      )}
                       <button onClick={() => setEditingTodo(todo)} className="text-stone-400 hover:text-stone-600 p-1.5">
                         <Icon name="edit" className="text-lg" />
                       </button>
@@ -685,17 +1113,6 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                   >
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-bold text-stone-800">{note.title}</h4>
-                      {onShareRecord && onUnshareRecord && (
-                        <ShareButton
-                          recordType={RecordType.NOTE}
-                          recordId={note.id}
-                          personId={person.id}
-                          shares={note.shares}
-                          collaborators={person.collaborators}
-                          onShare={(type, id, email) => onShareRecord('NOTE', id, person.id, email)}
-                          onUnshare={onUnshareRecord}
-                        />
-                      )}
                     </div>
                     <p className="text-stone-600 text-sm whitespace-pre-wrap line-clamp-4">{note.content}</p>
                   </Card>
@@ -744,17 +1161,6 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                           {record.type === 'EXPENSE' || record.type === 'LENT' ? '-' : '+'}
                           ${record.amount.toFixed(2)}
                         </span>
-                        {onShareRecord && onUnshareRecord && (
-                          <ShareButton
-                            recordType={RecordType.FINANCE}
-                            recordId={record.id}
-                            personId={person.id}
-                            shares={record.shares}
-                            collaborators={person.collaborators}
-                            onShare={(type, id, email) => onShareRecord('FINANCE', id, person.id, email)}
-                            onUnshare={onUnshareRecord}
-                          />
-                        )}
                       </div>
                     </div>
                   </Card>
@@ -774,6 +1180,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           onClose={() => setShowShareModal(false)}
           person={person}
           onUpdatePerson={onUpdatePerson}
+          onSendCollaborationRequest={onSendCollaborationRequest}
         />
 
         <AddItemModal
@@ -794,6 +1201,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           person={person}
           onUpdate={onUpdatePerson}
           onDelete={handleDeletePerson}
+          onLinkToUser={onLinkToUser}
         />
 
         {/* Edit Modals */}
@@ -802,6 +1210,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
             isOpen={true}
             onClose={() => setEditingTodo(null)}
             todo={editingTodo}
+            person={person}
             onUpdate={(updates) => onUpdateTodo(editingTodo.id, updates)}
             onDelete={() => onDeleteTodo(editingTodo.id)}
           />
@@ -812,6 +1221,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
             isOpen={true}
             onClose={() => setEditingHealth(null)}
             record={editingHealth}
+            person={person}
             onUpdate={(updates) => onUpdateHealth(editingHealth.id, updates)}
             onDelete={() => onDeleteHealth(editingHealth.id)}
           />
@@ -822,6 +1232,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
             isOpen={true}
             onClose={() => setEditingNote(null)}
             note={editingNote}
+            person={person}
             onUpdate={(updates) => onUpdateNote(editingNote.id, updates)}
             onDelete={() => onDeleteNote(editingNote.id)}
           />
@@ -832,6 +1243,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
             isOpen={true}
             onClose={() => setEditingFinance(null)}
             record={editingFinance}
+            person={person}
             onUpdate={(updates) => onUpdateFinance(editingFinance.id, updates)}
             onDelete={() => onDeleteFinance(editingFinance.id)}
           />
@@ -848,8 +1260,56 @@ const ShareSettingsModal: React.FC<{
   onClose: () => void;
   person: Person;
   onUpdatePerson: (p: Person) => void;
-}> = ({ isOpen, onClose, person, onUpdatePerson }) => {
-  const [email, setEmail] = useState('');
+  onSendCollaborationRequest?: (personId: string, targetUserId?: string, targetEmail?: string) => Promise<void>;
+}> = ({ isOpen, onClose, person, onUpdatePerson, onSendCollaborationRequest }) => {
+  const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing');
+  const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [availableProfiles, setAvailableProfiles] = useState<Person[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+
+  // Fetch user's own profiles (excluding current person)
+  useEffect(() => {
+    if (isOpen) {
+      const fetchProfiles = async () => {
+        try {
+          const { supabase } = await import('../src/lib/supabase');
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data, error } = await supabase
+            .from('people')
+            .select('*')
+            .eq('created_by', user.id)
+            .neq('id', person.id)
+            .order('name');
+
+          if (!error && data) {
+            setAvailableProfiles(data.map(p => ({
+              id: p.id,
+              name: p.name,
+              relation: p.relation || '',
+              avatarUrl: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`,
+              themeColor: p.theme_color || 'bg-stone-100',
+              birthday: p.birthday || '',
+              email: p.email || undefined,
+              linkedUserId: p.linked_user_id || undefined,
+              collaborators: [],
+              sharingPreference: (p.sharing_preference as any) || 'ASK_EVERY_TIME',
+              health: [],
+              todos: [],
+              financial: [],
+              notes: []
+            })));
+          }
+        } catch (err) {
+          console.error('Error fetching profiles:', err);
+        }
+      };
+      fetchProfiles();
+    }
+  }, [isOpen, person.id]);
 
   const handleTogglePref = (val: boolean) => {
     onUpdatePerson({
@@ -858,16 +1318,50 @@ const ShareSettingsModal: React.FC<{
     });
   };
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInviteExistingProfile = async () => {
+    if (!selectedProfileId || !onSendCollaborationRequest) return;
+    const selectedProfile = availableProfiles.find(p => p.id === selectedProfileId);
+    if (!selectedProfile) return;
+
+    setIsLoading(true);
+    try {
+      if (selectedProfile.linkedUserId) {
+        // Has linked user - send in-app notification
+        await onSendCollaborationRequest(person.id, selectedProfile.linkedUserId);
+      } else if (selectedProfile.email) {
+        // Has email but no linked user - send email invite
+        await onSendCollaborationRequest(person.id, undefined, selectedProfile.email);
+      } else {
+        // No email/link - generate share link
+        const link = `${window.location.origin}/invite?person=${person.id}`;
+        setShareLink(link);
+        await navigator.clipboard.writeText(link);
+        alert('Share link copied to clipboard!');
+      }
+      setSelectedProfileId('');
+    } catch (err) {
+      console.error('Error sending collaboration request:', err);
+      alert('Failed to send invitation. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInviteNewUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    // Mock invitation
-    const newName = email.split('@')[0];
-    onUpdatePerson({
-      ...person,
-      collaborators: [...person.collaborators, newName]
-    });
-    setEmail('');
+    if (!newUserEmail || !onSendCollaborationRequest) return;
+
+    setIsLoading(true);
+    try {
+      await onSendCollaborationRequest(person.id, undefined, newUserEmail);
+      setNewUserEmail('');
+      alert('Invitation sent!');
+    } catch (err) {
+      console.error('Error sending invitation:', err);
+      alert('Failed to send invitation. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const removeCollaborator = (name: string) => {
@@ -910,19 +1404,115 @@ const ShareSettingsModal: React.FC<{
           </div>
         </div>
 
-        {/* Invite Form */}
+        {/* Invite Kith/Kin */}
         <div>
-          <h4 className="font-bold text-stone-700 mb-3">Invite Family Member</h4>
-          <form onSubmit={handleInvite} className="flex gap-2">
-            <Input
-              placeholder="email@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              type="email"
-            />
-            <Button type="submit" variant="primary" disabled={!email}>Invite</Button>
-          </form>
-          <p className="text-xs text-stone-400 mt-2">They will receive an email to join your circle.</p>
+          <h4 className="font-bold text-stone-700 mb-3">Invite Kith / Kin</h4>
+          
+          {/* Tabs */}
+          <div className="flex gap-2 mb-4 border-b border-stone-200">
+            <button
+              type="button"
+              onClick={() => setActiveTab('existing')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'existing'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              Existing Profiles
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('new')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'new'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              New User
+            </button>
+          </div>
+
+          {/* Existing Profiles Tab */}
+          {activeTab === 'existing' && (
+            <div className="space-y-3">
+              {availableProfiles.length === 0 ? (
+                <p className="text-sm text-stone-400 italic">No other profiles available. Create more profiles to invite them.</p>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Select Profile</label>
+                    <select
+                      value={selectedProfileId}
+                      onChange={e => setSelectedProfileId(e.target.value)}
+                      className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+                    >
+                      <option value="">Choose a profile...</option>
+                      {availableProfiles.map(profile => (
+                        <option key={profile.id} value={profile.id}>
+                          {profile.name} ({profile.relation})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedProfileId && (
+                    <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-sm">
+                      {(() => {
+                        const selected = availableProfiles.find(p => p.id === selectedProfileId);
+                        if (selected?.linkedUserId) {
+                          return <p className="text-indigo-700">✓ This profile is linked to an account. They will receive an in-app notification.</p>;
+                        } else if (selected?.email) {
+                          return <p className="text-indigo-700">📧 An email invitation will be sent to {selected.email}</p>;
+                        } else {
+                          return <p className="text-indigo-700">🔗 A share link will be generated for you to send via WhatsApp, message, etc.</p>;
+                        }
+                      })()}
+                    </div>
+                  )}
+                  <Button
+                    variant="primary"
+                    onClick={handleInviteExistingProfile}
+                    disabled={!selectedProfileId || isLoading}
+                    className="w-full"
+                  >
+                    {isLoading ? 'Sending...' : 'Send Invitation'}
+                  </Button>
+                  {shareLink && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                      <p className="text-sm text-green-700 mb-2">Share link copied! You can also copy it here:</p>
+                      <div className="flex gap-2">
+                        <Input value={shareLink} readOnly className="flex-1 text-xs" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigator.clipboard.writeText(shareLink)}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* New User Tab */}
+          {activeTab === 'new' && (
+            <form onSubmit={handleInviteNewUser} className="space-y-3">
+              <Input
+                placeholder="email@example.com"
+                value={newUserEmail}
+                onChange={e => setNewUserEmail(e.target.value)}
+                type="email"
+              />
+              <Button type="submit" variant="primary" disabled={!newUserEmail || isLoading} className="w-full">
+                {isLoading ? 'Sending...' : 'Send Email Invitation'}
+              </Button>
+              <p className="text-xs text-stone-400">They will receive an email to join your circle.</p>
+            </form>
+          )}
         </div>
       </div>
     </Modal>
@@ -935,10 +1525,10 @@ const AddItemModal: React.FC<{
   type: RecordType | null;
   person: Person;
   currentUser: User | null;
-  onAddTodo: (personId: string, title: string, date: string, priority?: string, description?: string) => void;
-  onAddHealth: (personId: string, title: string, date: string, notes: string, type: string, files?: File[]) => void;
-  onAddNote: (personId: string, title: string, content: string) => void;
-  onAddFinance: (personId: string, title: string, amount: number, type: string, date: string) => void;
+  onAddTodo: (personId: string, title: string, date: string, priority?: string, description?: string, sharedWithCollaboratorIds?: string[]) => void;
+  onAddHealth: (personId: string, title: string, date: string, notes: string, type: string, files?: File[], sharedWithCollaboratorIds?: string[]) => void;
+  onAddNote: (personId: string, title: string, content: string, sharedWithCollaboratorIds?: string[]) => void;
+  onAddFinance: (personId: string, title: string, amount: number, type: string, date: string, sharedWithCollaboratorIds?: string[]) => void;
 }> = ({ isOpen, onClose, type, person, currentUser, onAddTodo, onAddHealth, onAddNote, onAddFinance }) => {
   if (!type) return null;
 
@@ -952,7 +1542,36 @@ const AddItemModal: React.FC<{
   const [priority, setPriority] = useState('MEDIUM');
   const [description, setDescription] = useState('');
   const [share, setShare] = useState(person.sharingPreference === 'ALWAYS_SHARE');
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>([]);
+  const [acceptedCollaborators, setAcceptedCollaborators] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [files, setFiles] = useState<File[]>([]);
+
+  // Fetch accepted collaborators
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCollaborators = async () => {
+        try {
+          const { supabase } = await import('../src/lib/supabase');
+          const { data, error } = await supabase
+            .from('person_shares')
+            .select('id, user_id, user_email, profiles(full_name, email)')
+            .eq('person_id', person.id)
+            .not('user_id', 'is', null);
+
+          if (!error && data) {
+            setAcceptedCollaborators(data.map(share => ({
+              id: share.id,
+              name: (share.profiles as any)?.full_name || share.user_email || 'Unknown',
+              email: (share.profiles as any)?.email || share.user_email
+            })));
+          }
+        } catch (err) {
+          console.error('Error fetching collaborators:', err);
+        }
+      };
+      fetchCollaborators();
+    }
+  }, [isOpen, person.id]);
 
 
   // Reset form on open
@@ -967,6 +1586,7 @@ const AddItemModal: React.FC<{
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
       setShare(person.sharingPreference === 'ALWAYS_SHARE');
+      setSelectedCollaboratorIds([]);
       setFiles([]);
     }
   }, [isOpen, person.sharingPreference]);
@@ -974,17 +1594,27 @@ const AddItemModal: React.FC<{
   const handleSubmit = () => {
     if (!title) return;
 
+    const collaboratorIds = share ? selectedCollaboratorIds : undefined;
+
     if (type === RecordType.TODO) {
-      onAddTodo(person.id, title, date, priority, description);
+      onAddTodo(person.id, title, date, priority, description, collaboratorIds);
     } else if (type === RecordType.HEALTH) {
-      onAddHealth(person.id, title, date, notes, healthType, files);
+      onAddHealth(person.id, title, date, notes, healthType, files, collaboratorIds);
     } else if (type === RecordType.NOTE) {
-      onAddNote(person.id, title, notes);
+      onAddNote(person.id, title, notes, collaboratorIds);
     } else if (type === RecordType.FINANCE) {
-      onAddFinance(person.id, title, parseFloat(amount), financeType, date);
+      onAddFinance(person.id, title, parseFloat(amount), financeType, date, collaboratorIds);
     }
 
     onClose();
+  };
+
+  const toggleCollaborator = (collabId: string) => {
+    setSelectedCollaboratorIds(prev =>
+      prev.includes(collabId)
+        ? prev.filter(id => id !== collabId)
+        : [...prev, collabId]
+    );
   };
 
   const getTitle = () => {
@@ -1102,11 +1732,49 @@ const AddItemModal: React.FC<{
           <Toggle
             checked={share}
             onChange={setShare}
-            label={`Share with ${person.collaborators.length > 0 ? person.collaborators.join(' & ') : 'Collaborators'}?`}
+            label="Share with Collaborators?"
           />
-          <p className="text-xs text-stone-400 mt-2 pl-[52px]">
-            {share ? 'Everyone in the circle will see this.' : 'Only you will see this.'}
-          </p>
+          {share && acceptedCollaborators.length > 0 && (
+            <div className="mt-3 pl-[52px]">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {acceptedCollaborators.map(collab => (
+                  <label
+                    key={collab.id}
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
+                      selectedCollaboratorIds.includes(collab.id)
+                        ? 'bg-indigo-100 border-2 border-indigo-300'
+                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollaboratorIds.includes(collab.id)}
+                      onChange={() => toggleCollaborator(collab.id)}
+                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                    />
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                      {collab.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {share && acceptedCollaborators.length === 0 && (
+            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+              No accepted collaborators yet. Add collaborators from the profile sharing settings.
+            </p>
+          )}
+          {!share && (
+            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+              Only you will see this.
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 mt-6">

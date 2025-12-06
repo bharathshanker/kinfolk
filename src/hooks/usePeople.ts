@@ -51,6 +51,61 @@ export const usePeople = () => {
             if (financeRes.error) throw financeRes.error;
             if (sharesRes.error) throw sharesRes.error;
 
+            // Collect all record IDs for filtering item_shares (security: only fetch shares for our records)
+            const healthRecordIds = (healthRes.data || []).map(h => h.id);
+            const todoRecordIds = (todosRes.data || []).map(t => t.id);
+            const noteRecordIds = (notesRes.data || []).map(n => n.id);
+            const financeRecordIds = (financeRes.data || []).map(f => f.id);
+
+            // Fetch item_shares only for records we have access to
+            const itemSharesQueries = [];
+            if (healthRecordIds.length > 0) {
+                itemSharesQueries.push(
+                    supabase.from('item_shares')
+                        .select('*')
+                        .eq('record_type', 'HEALTH')
+                        .in('record_id', healthRecordIds)
+                );
+            }
+            if (todoRecordIds.length > 0) {
+                itemSharesQueries.push(
+                    supabase.from('item_shares')
+                        .select('*')
+                        .eq('record_type', 'TODO')
+                        .in('record_id', todoRecordIds)
+                );
+            }
+            if (noteRecordIds.length > 0) {
+                itemSharesQueries.push(
+                    supabase.from('item_shares')
+                        .select('*')
+                        .eq('record_type', 'NOTE')
+                        .in('record_id', noteRecordIds)
+                );
+            }
+            if (financeRecordIds.length > 0) {
+                itemSharesQueries.push(
+                    supabase.from('item_shares')
+                        .select('*')
+                        .eq('record_type', 'FINANCE')
+                        .in('record_id', financeRecordIds)
+                );
+            }
+
+            // Execute all item_shares queries in parallel
+            const itemSharesResults = itemSharesQueries.length > 0 
+                ? await Promise.all(itemSharesQueries)
+                : [];
+
+            // Combine all item_shares results
+            const allItemShares = itemSharesResults.flatMap(res => {
+                if (res.error) {
+                    console.error('Error fetching item shares:', res.error);
+                    return [];
+                }
+                return res.data || [];
+            });
+
             // 3. Map to Domain Model
             const mappedPeople: Person[] = peopleData.map(p => {
                 const pHealth = healthRes.data.filter(h => h.person_id === p.id);
@@ -61,6 +116,12 @@ export const usePeople = () => {
 
                 const collaborators = pShares.map(s => (s.profiles as any)?.full_name || s.user_email || 'Unknown');
 
+                // Get item shares for each record type (already filtered by record IDs)
+                const healthItemShares = allItemShares.filter(is => is.record_type === 'HEALTH');
+                const todoItemShares = allItemShares.filter(is => is.record_type === 'TODO');
+                const noteItemShares = allItemShares.filter(is => is.record_type === 'NOTE');
+                const financeItemShares = allItemShares.filter(is => is.record_type === 'FINANCE');
+
                 return {
                     id: p.id,
                     name: p.name,
@@ -68,6 +129,8 @@ export const usePeople = () => {
                     avatarUrl: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`,
                     themeColor: p.theme_color || 'bg-stone-100',
                     birthday: p.birthday || '',
+                    email: p.email || undefined,
+                    linkedUserId: p.linked_user_id || undefined,
                     collaborators,
                     sharingPreference: (p.sharing_preference as SharingPreference) || 'ASK_EVERY_TIME',
                     health: pHealth.map(h => ({
@@ -77,6 +140,7 @@ export const usePeople = () => {
                         type: (h.type as any) || 'OTHER',
                         notes: h.notes || '',
                         attachments: h.attachments || [],
+                        sharedWithCollaboratorIds: healthItemShares.filter(is => is.record_id === h.id).map(is => is.person_share_id),
                         meta: { isShared: collaborators.length > 0, sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(h.created_at || '') }
                     })),
                     todos: pTodos.map(t => ({
@@ -86,6 +150,7 @@ export const usePeople = () => {
                         dueDate: t.due_date || '',
                         isCompleted: t.is_completed || false,
                         priority: (t.priority as any) || 'MEDIUM',
+                        sharedWithCollaboratorIds: todoItemShares.filter(is => is.record_id === t.id).map(is => is.person_share_id),
                         meta: { isShared: collaborators.length > 0, sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(t.created_at || '') }
                     })),
                     notes: pNotes.map(n => ({
@@ -93,6 +158,7 @@ export const usePeople = () => {
                         title: n.title || '',
                         content: n.content || '',
                         tags: n.tags || [],
+                        sharedWithCollaboratorIds: noteItemShares.filter(is => is.record_id === n.id).map(is => is.person_share_id),
                         meta: { isShared: collaborators.length > 0, sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(n.created_at || '') }
                     })),
                     financial: pFinance.map(f => ({
@@ -101,6 +167,7 @@ export const usePeople = () => {
                         amount: f.amount,
                         type: (f.type as any) || 'EXPENSE',
                         date: f.date,
+                        sharedWithCollaboratorIds: financeItemShares.filter(is => is.record_id === f.id).map(is => is.person_share_id),
                         meta: { isShared: collaborators.length > 0, sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(f.created_at || '') }
                     }))
                 };
@@ -122,7 +189,7 @@ export const usePeople = () => {
     }, []);
 
     // CRUD Operations
-    const addPerson = async (name: string, relation: string, birthday?: string, file?: File) => {
+    const addPerson = async (name: string, relation: string, birthday?: string, file?: File, email?: string) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -150,6 +217,7 @@ export const usePeople = () => {
             relation,
             birthday: birthday || null,
             avatar_url: avatarUrl,
+            email: email || null,
             created_by: user.id,
             theme_color: 'bg-stone-100' // Default
         });
@@ -169,7 +237,8 @@ export const usePeople = () => {
             name: updatedPerson.name,
             relation: updatedPerson.relation,
             sharing_preference: updatedPerson.sharingPreference,
-            birthday: updatedPerson.birthday === '' ? null : updatedPerson.birthday
+            birthday: updatedPerson.birthday === '' ? null : updatedPerson.birthday,
+            email: updatedPerson.email || null
         }).eq('id', updatedPerson.id);
 
         if (error) throw error;
@@ -179,23 +248,35 @@ export const usePeople = () => {
         await fetchPeople();
     };
 
-    const addTodo = async (personId: string, title: string, date: string, priority: string = 'MEDIUM', description: string = '') => {
+    const addTodo = async (personId: string, title: string, date: string, priority: string = 'MEDIUM', description: string = '', sharedWithCollaboratorIds?: string[]) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { error } = await supabase.from('todos').insert({
+        const { data: todoData, error } = await supabase.from('todos').insert({
             person_id: personId,
             title,
             due_date: date,
             priority,
             description: description || null,
             created_by: user.id
-        });
+        }).select().single();
         if (error) throw error;
+
+        // Create item_shares if collaborators are specified
+        if (sharedWithCollaboratorIds && sharedWithCollaboratorIds.length > 0 && todoData) {
+            const itemShares = sharedWithCollaboratorIds.map(personShareId => ({
+                record_type: 'TODO',
+                record_id: todoData.id,
+                person_share_id: personShareId
+            }));
+            const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+            if (shareError) console.error('Error creating item shares:', shareError);
+        }
+
         await fetchPeople();
     };
 
-    const updateTodo = async (todoId: string, updates: { title?: string; dueDate?: string; priority?: string; description?: string; isCompleted?: boolean }) => {
+    const updateTodo = async (todoId: string, updates: { title?: string; dueDate?: string; priority?: string; description?: string; isCompleted?: boolean; sharedWithCollaboratorIds?: string[] }) => {
         const dbUpdates: any = {};
         if (updates.title !== undefined) dbUpdates.title = updates.title;
         if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
@@ -205,6 +286,27 @@ export const usePeople = () => {
 
         const { error } = await supabase.from('todos').update(dbUpdates).eq('id', todoId);
         if (error) throw error;
+
+        // Update item_shares if sharedWithCollaboratorIds is provided
+        if (updates.sharedWithCollaboratorIds !== undefined) {
+            // Delete existing shares
+            await supabase.from('item_shares')
+                .delete()
+                .eq('record_type', 'TODO')
+                .eq('record_id', todoId);
+
+            // Insert new shares
+            if (updates.sharedWithCollaboratorIds.length > 0) {
+                const itemShares = updates.sharedWithCollaboratorIds.map(personShareId => ({
+                    record_type: 'TODO',
+                    record_id: todoId,
+                    person_share_id: personShareId
+                }));
+                const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+                if (shareError) console.error('Error updating item shares:', shareError);
+            }
+        }
+
         await fetchPeople();
     };
 
@@ -220,7 +322,7 @@ export const usePeople = () => {
         await fetchPeople();
     };
 
-    const addHealthRecord = async (personId: string, title: string, date: string, notes: string, type: string, files?: File[]) => {
+    const addHealthRecord = async (personId: string, title: string, date: string, notes: string, type: string, files?: File[], sharedWithCollaboratorIds?: string[]) => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -271,12 +373,23 @@ export const usePeople = () => {
                 type,
                 attachments: attachmentUrls,
                 created_by: user.id
-            }).select();
+            }).select().single();
 
             if (error) {
                 console.error('Error inserting health record:', error);
                 alert(`Failed to save health record: ${error.message}`);
                 throw error;
+            }
+
+            // Create item_shares if collaborators are specified
+            if (sharedWithCollaboratorIds && sharedWithCollaboratorIds.length > 0 && data) {
+                const itemShares = sharedWithCollaboratorIds.map(personShareId => ({
+                    record_type: 'HEALTH',
+                    record_id: data.id,
+                    person_share_id: personShareId
+                }));
+                const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+                if (shareError) console.error('Error creating item shares:', shareError);
             }
 
             console.log('Health record inserted successfully:', data);
@@ -287,9 +400,28 @@ export const usePeople = () => {
         }
     };
 
-    const updateHealthRecord = async (recordId: string, updates: { title?: string; date?: string; notes?: string; type?: string }) => {
+    const updateHealthRecord = async (recordId: string, updates: { title?: string; date?: string; notes?: string; type?: string; sharedWithCollaboratorIds?: string[] }) => {
         const { error } = await supabase.from('health_records').update(updates).eq('id', recordId);
         if (error) throw error;
+
+        // Update item_shares if sharedWithCollaboratorIds is provided
+        if (updates.sharedWithCollaboratorIds !== undefined) {
+            await supabase.from('item_shares')
+                .delete()
+                .eq('record_type', 'HEALTH')
+                .eq('record_id', recordId);
+
+            if (updates.sharedWithCollaboratorIds.length > 0) {
+                const itemShares = updates.sharedWithCollaboratorIds.map(personShareId => ({
+                    record_type: 'HEALTH',
+                    record_id: recordId,
+                    person_share_id: personShareId
+                }));
+                const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+                if (shareError) console.error('Error updating item shares:', shareError);
+            }
+        }
+
         await fetchPeople();
     };
 
@@ -299,23 +431,54 @@ export const usePeople = () => {
         await fetchPeople();
     };
 
-    const addNote = async (personId: string, title: string, content: string) => {
+    const addNote = async (personId: string, title: string, content: string, sharedWithCollaboratorIds?: string[]) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { error } = await supabase.from('notes').insert({
+        const { data: noteData, error } = await supabase.from('notes').insert({
             person_id: personId,
             title,
             content,
             created_by: user.id
-        });
+        }).select().single();
         if (error) throw error;
+
+        // Create item_shares if collaborators are specified
+        if (sharedWithCollaboratorIds && sharedWithCollaboratorIds.length > 0 && noteData) {
+            const itemShares = sharedWithCollaboratorIds.map(personShareId => ({
+                record_type: 'NOTE',
+                record_id: noteData.id,
+                person_share_id: personShareId
+            }));
+            const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+            if (shareError) console.error('Error creating item shares:', shareError);
+        }
+
         await fetchPeople();
     };
 
-    const updateNote = async (noteId: string, updates: { title?: string; content?: string }) => {
+    const updateNote = async (noteId: string, updates: { title?: string; content?: string; sharedWithCollaboratorIds?: string[] }) => {
         const { error } = await supabase.from('notes').update(updates).eq('id', noteId);
         if (error) throw error;
+
+        // Update item_shares if sharedWithCollaboratorIds is provided
+        if (updates.sharedWithCollaboratorIds !== undefined) {
+            await supabase.from('item_shares')
+                .delete()
+                .eq('record_type', 'NOTE')
+                .eq('record_id', noteId);
+
+            if (updates.sharedWithCollaboratorIds.length > 0) {
+                const itemShares = updates.sharedWithCollaboratorIds.map(personShareId => ({
+                    record_type: 'NOTE',
+                    record_id: noteId,
+                    person_share_id: personShareId
+                }));
+                const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+                if (shareError) console.error('Error updating item shares:', shareError);
+            }
+        }
+
         await fetchPeople();
     };
 
@@ -325,25 +488,56 @@ export const usePeople = () => {
         await fetchPeople();
     };
 
-    const addFinanceRecord = async (personId: string, title: string, amount: number, type: string, date: string) => {
+    const addFinanceRecord = async (personId: string, title: string, amount: number, type: string, date: string, sharedWithCollaboratorIds?: string[]) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { error } = await supabase.from('financial_records').insert({
+        const { data: financeData, error } = await supabase.from('financial_records').insert({
             person_id: personId,
             title,
             amount,
             type,
             date,
             created_by: user.id
-        });
+        }).select().single();
         if (error) throw error;
+
+        // Create item_shares if collaborators are specified
+        if (sharedWithCollaboratorIds && sharedWithCollaboratorIds.length > 0 && financeData) {
+            const itemShares = sharedWithCollaboratorIds.map(personShareId => ({
+                record_type: 'FINANCE',
+                record_id: financeData.id,
+                person_share_id: personShareId
+            }));
+            const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+            if (shareError) console.error('Error creating item shares:', shareError);
+        }
+
         await fetchPeople();
     };
 
-    const updateFinanceRecord = async (recordId: string, updates: { title?: string; amount?: number; type?: string; date?: string }) => {
+    const updateFinanceRecord = async (recordId: string, updates: { title?: string; amount?: number; type?: string; date?: string; sharedWithCollaboratorIds?: string[] }) => {
         const { error } = await supabase.from('financial_records').update(updates).eq('id', recordId);
         if (error) throw error;
+
+        // Update item_shares if sharedWithCollaboratorIds is provided
+        if (updates.sharedWithCollaboratorIds !== undefined) {
+            await supabase.from('item_shares')
+                .delete()
+                .eq('record_type', 'FINANCE')
+                .eq('record_id', recordId);
+
+            if (updates.sharedWithCollaboratorIds.length > 0) {
+                const itemShares = updates.sharedWithCollaboratorIds.map(personShareId => ({
+                    record_type: 'FINANCE',
+                    record_id: recordId,
+                    person_share_id: personShareId
+                }));
+                const { error: shareError } = await supabase.from('item_shares').insert(itemShares);
+                if (shareError) console.error('Error updating item shares:', shareError);
+            }
+        }
+
         await fetchPeople();
     };
 
@@ -468,6 +662,125 @@ export const usePeople = () => {
         if (error) throw error;
     };
 
+    // --- Collaboration Functions ---
+
+    const linkProfileToUser = async (personId: string, userId: string) => {
+        const { error } = await supabase
+            .from('people')
+            .update({ linked_user_id: userId })
+            .eq('id', personId);
+
+        if (error) throw error;
+        await fetchPeople();
+    };
+
+    const sendCollaborationRequest = async (personId: string, targetUserId?: string, targetEmail?: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        // If targetUserId is provided, use it; otherwise try to find user by email
+        let finalTargetUserId = targetUserId;
+        if (!finalTargetUserId && targetEmail) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', targetEmail)
+                .single();
+            finalTargetUserId = profile?.id;
+        }
+
+        const { error } = await supabase.from('collaboration_requests').insert({
+            person_id: personId,
+            requester_id: user.id,
+            target_user_id: finalTargetUserId || null,
+            target_email: targetEmail || null,
+            status: 'PENDING'
+        });
+
+        if (error) throw error;
+        // TODO: Send email if targetEmail provided and no user found
+    };
+
+    const fetchPendingCollaborationRequests = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('collaboration_requests')
+            .select(`
+                *,
+                person:people!person_id(name),
+                requester:profiles!requester_id(full_name, email)
+            `)
+            .eq('target_user_id', user.id)
+            .eq('status', 'PENDING')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching collaboration requests:', error);
+            return [];
+        }
+
+        return (data || []).map(req => ({
+            id: req.id,
+            personId: req.person_id,
+            personName: (req.person as any)?.name || 'Unknown',
+            requesterId: req.requester_id,
+            requesterName: (req.requester as any)?.full_name || 'Unknown',
+            requesterEmail: (req.requester as any)?.email || '',
+            targetUserId: req.target_user_id,
+            targetEmail: req.target_email,
+            status: req.status as 'PENDING' | 'ACCEPTED' | 'DECLINED',
+            mergedIntoPersonId: req.merged_into_person_id,
+            createdAt: new Date(req.created_at),
+            updatedAt: new Date(req.updated_at)
+        }));
+    };
+
+    const acceptCollaborationRequest = async (requestId: string, mergeIntoPersonId: string | null) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        // First, get the request to find the person_id
+        const { data: request, error: fetchError } = await supabase
+            .from('collaboration_requests')
+            .select('person_id')
+            .eq('id', requestId)
+            .single();
+
+        if (fetchError || !request) throw new Error('Request not found');
+
+        // Create person_share entry
+        const { error: shareError } = await supabase.from('person_shares').insert({
+            person_id: mergeIntoPersonId || request.person_id,
+            user_id: user.id
+        });
+
+        if (shareError) throw shareError;
+
+        // Update request status
+        const { error: updateError } = await supabase
+            .from('collaboration_requests')
+            .update({
+                status: 'ACCEPTED',
+                merged_into_person_id: mergeIntoPersonId
+            })
+            .eq('id', requestId);
+
+        if (updateError) throw updateError;
+        await fetchPeople();
+    };
+
+    const declineCollaborationRequest = async (requestId: string) => {
+        const { error } = await supabase
+            .from('collaboration_requests')
+            .update({ status: 'DECLINED' })
+            .eq('id', requestId);
+
+        if (error) throw error;
+        await fetchPeople();
+    };
+
     return {
         people,
         loading,
@@ -495,6 +808,12 @@ export const usePeople = () => {
         unshareRecord,
         getPendingShares,
         acceptShare,
-        declineShare
+        declineShare,
+        // Collaboration
+        linkProfileToUser,
+        sendCollaborationRequest,
+        fetchPendingCollaborationRequests,
+        acceptCollaborationRequest,
+        declineCollaborationRequest
     };
 };

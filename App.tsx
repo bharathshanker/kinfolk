@@ -17,20 +17,22 @@ import { Modal } from './components/Shared';
 const AddPersonModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, relation: string, birthday: string, file?: File) => void;
+  onAdd: (name: string, relation: string, birthday: string, file?: File, email?: string) => void;
 }> = ({ isOpen, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [relation, setRelation] = useState('');
   const [birthday, setBirthday] = useState('');
+  const [email, setEmail] = useState('');
   const [file, setFile] = useState<File | undefined>(undefined);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && relation) {
-      onAdd(name, relation, birthday, file);
+      onAdd(name, relation, birthday, file, email || undefined);
       setName('');
       setRelation('');
       setBirthday('');
+      setEmail('');
       setFile(undefined);
       onClose();
     }
@@ -61,6 +63,7 @@ const AddPersonModal: React.FC<{
         <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mom" autoFocus />
         <Input label="Relation" value={relation} onChange={e => setRelation(e.target.value)} placeholder="e.g. Mother" />
         <Input label="Birthday (Optional)" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
+        <Input label="Email (Optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="ghost" onClick={onClose} type="button">Cancel</Button>
           <Button variant="primary" type="submit" disabled={!name || !relation}>Add Person</Button>
@@ -228,12 +231,44 @@ const AppContent: React.FC = () => {
     deleteFinanceRecord,
     uploadAvatar,
     shareRecord,
-    unshareRecord
+    unshareRecord,
+    linkProfileToUser,
+    sendCollaborationRequest,
+    fetchPendingCollaborationRequests,
+    acceptCollaborationRequest,
+    declineCollaborationRequest
   } = usePeople();
   const [activePersonId, setActivePersonId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<RecordType>(RecordType.PROFILE);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
+  const [pendingCollaborationRequests, setPendingCollaborationRequests] = useState<Array<any>>([]);
+
+  // Fetch pending collaboration requests
+  const refreshCollaborationRequests = React.useCallback(async () => {
+    if (user && fetchPendingCollaborationRequests) {
+      const requests = await fetchPendingCollaborationRequests();
+      setPendingCollaborationRequests(requests);
+    }
+  }, [user, fetchPendingCollaborationRequests]);
+
+  React.useEffect(() => {
+    refreshCollaborationRequests();
+  }, [refreshCollaborationRequests]);
+
+  const handleAcceptCollaborationRequest = async (requestId: string, mergeIntoPersonId: string | null) => {
+    if (acceptCollaborationRequest) {
+      await acceptCollaborationRequest(requestId, mergeIntoPersonId);
+      await refreshCollaborationRequests();
+    }
+  };
+
+  const handleDeclineCollaborationRequest = async (requestId: string) => {
+    if (declineCollaborationRequest) {
+      await declineCollaborationRequest(requestId);
+      await refreshCollaborationRequests();
+    }
+  };
 
   // Handler for selecting a person with optional tab
   const handleSelectPerson = (personId: string, tab?: RecordType) => {
@@ -365,12 +400,17 @@ const AppContent: React.FC = () => {
                 onUploadAvatar={uploadAvatar}
                 onShareRecord={shareRecord}
                 onUnshareRecord={unshareRecord}
+                onLinkToUser={linkProfileToUser}
+                onSendCollaborationRequest={sendCollaborationRequest}
               />
             ) : (
               <Newsfeed
                 people={people}
                 onSelectPerson={handleSelectPerson}
                 onAddPerson={() => setShowAddPersonModal(true)}
+                pendingCollaborationRequests={pendingCollaborationRequests}
+                onAcceptCollaborationRequest={handleAcceptCollaborationRequest}
+                onDeclineCollaborationRequest={handleDeclineCollaborationRequest}
               />
             )}
           </div>

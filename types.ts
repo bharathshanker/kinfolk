@@ -55,6 +55,7 @@ export interface HealthRecord {
   // Sharing
   shares?: RecordShare[];
   sharedFrom?: SharedFromInfo;
+  sharedWithCollaboratorIds?: string[]; // person_share_ids
 }
 
 export interface TodoItem {
@@ -68,6 +69,7 @@ export interface TodoItem {
   // Sharing
   shares?: RecordShare[];
   sharedFrom?: SharedFromInfo;
+  sharedWithCollaboratorIds?: string[]; // person_share_ids
 }
 
 export interface FinancialRecord {
@@ -80,6 +82,7 @@ export interface FinancialRecord {
   // Sharing
   shares?: RecordShare[];
   sharedFrom?: SharedFromInfo;
+  sharedWithCollaboratorIds?: string[]; // person_share_ids
 }
 
 export interface Note {
@@ -91,6 +94,7 @@ export interface Note {
   // Sharing
   shares?: RecordShare[];
   sharedFrom?: SharedFromInfo;
+  sharedWithCollaboratorIds?: string[]; // person_share_ids
 }
 
 export interface Person {
@@ -100,6 +104,8 @@ export interface Person {
   avatarUrl: string;
   themeColor: string; // e.g., "bg-rose-100"
   birthday: string;
+  email?: string; // Optional email for the profile
+  linkedUserId?: string; // Optional link to registered app user
   collaborators: string[]; // People who also have access to this profile
   sharingPreference: SharingPreference;
   health: HealthRecord[];
@@ -133,4 +139,20 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   isThinking?: boolean;
+}
+
+// Collaboration request for profile-level sharing
+export interface CollaborationRequest {
+  id: string;
+  personId: string;
+  personName: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  targetUserId?: string;
+  targetEmail?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  mergedIntoPersonId?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
