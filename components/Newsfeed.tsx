@@ -39,20 +39,15 @@ const CollaborationRequestsShelf: React.FC<{
     }
   };
 
-  const handleCreateNew = async (requestId: string) => {
-    setIsLoading(true);
-    try {
-      // Open add person modal - the parent will handle this
-      onCreateNewProfile();
-      // After profile is created, we'll accept the request
-      // For now, we'll just accept it with null (create new)
-      await onAccept(requestId, null);
-      setActiveRequest(null);
-    } catch (error) {
-      console.error('Failed to create profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleCreateNew = (requestId: string) => {
+    // Open the add person modal - after the user creates a profile,
+    // they can return here and merge with the newly created profile.
+    // We do NOT auto-accept - keep the panel visible so user can complete the flow.
+    onCreateNewProfile();
+    // Reset active request but keep showing the collaboration requests shelf
+    // so user can select the newly created profile from the merge dropdown
+    setActiveRequest(null);
+    alert('Create your new profile. Once done, return here and select it from the "Merge with existing" dropdown to complete the collaboration.');
   };
 
   return (

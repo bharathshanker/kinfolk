@@ -806,7 +806,9 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
   onDeleteFinance,
   onUploadAvatar,
   onShareRecord,
-  onUnshareRecord
+  onUnshareRecord,
+  onLinkToUser,
+  onSendCollaborationRequest
 }) => {
   const [activeTab, setActiveTab] = useState<RecordType>(initialTab || RecordType.PROFILE);
   const [isUploading, setIsUploading] = useState(false);
@@ -1326,22 +1328,23 @@ const ShareSettingsModal: React.FC<{
     setIsLoading(true);
     try {
       if (selectedProfile.linkedUserId) {
-        // Has linked user - send in-app notification
+        // Has linked user - send in-app notification (collaboration request to shelf)
         await onSendCollaborationRequest(person.id, selectedProfile.linkedUserId);
+        alert('Collaboration request sent! They will see it in their collaboration requests shelf.');
       } else if (selectedProfile.email) {
         // Has email but no linked user - send email invite
         await onSendCollaborationRequest(person.id, undefined, selectedProfile.email);
+        alert('Email invitation sent! Once they sign up, they will see the collaboration request.');
       } else {
-        // No email/link - generate share link
-        const link = `${window.location.origin}/invite?person=${person.id}`;
-        setShareLink(link);
-        await navigator.clipboard.writeText(link);
-        alert('Share link copied to clipboard!');
+        // No email/link - still create collaboration request for when they link later
+        await onSendCollaborationRequest(person.id, undefined, undefined);
+        alert('Collaboration request created. They will see it once they link their account.');
       }
       setSelectedProfileId('');
+      setShareLink(''); // Clear any previous share link
     } catch (err) {
       console.error('Error sending collaboration request:', err);
-      alert('Failed to send invitation. Please try again.');
+      alert('Failed to send collaboration request. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -1461,11 +1464,11 @@ const ShareSettingsModal: React.FC<{
                       {(() => {
                         const selected = availableProfiles.find(p => p.id === selectedProfileId);
                         if (selected?.linkedUserId) {
-                          return <p className="text-indigo-700">✓ This profile is linked to an account. They will receive an in-app notification.</p>;
+                          return <p className="text-indigo-700">✓ This profile is linked to an account. They will receive a collaboration request in their shelf.</p>;
                         } else if (selected?.email) {
-                          return <p className="text-indigo-700">📧 An email invitation will be sent to {selected.email}</p>;
+                          return <p className="text-indigo-700">📧 An email invitation will be sent to {selected.email}. Once they sign up, they will see the collaboration request.</p>;
                         } else {
-                          return <p className="text-indigo-700">🔗 A share link will be generated for you to send via WhatsApp, message, etc.</p>;
+                          return <p className="text-indigo-700">ℹ️ Collaboration request will be created. They will see it once they link their account.</p>;
                         }
                       })()}
                     </div>
@@ -1476,23 +1479,8 @@ const ShareSettingsModal: React.FC<{
                     disabled={!selectedProfileId || isLoading}
                     className="w-full"
                   >
-                    {isLoading ? 'Sending...' : 'Send Invitation'}
+                    {isLoading ? 'Sharing...' : 'Share'}
                   </Button>
-                  {shareLink && (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                      <p className="text-sm text-green-700 mb-2">Share link copied! You can also copy it here:</p>
-                      <div className="flex gap-2">
-                        <Input value={shareLink} readOnly className="flex-1 text-xs" />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigator.clipboard.writeText(shareLink)}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>

@@ -18,7 +18,13 @@ export const usePeople = () => {
         try {
             setLoading(true);
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                // No authenticated user – expose empty state so the login screen can render.
+                setPeople([]);
+                setError(null);
+                setLoading(false);
+                return;
+            }
 
             // 1. Fetch People
             const { data: peopleData, error: peopleError } = await supabase
@@ -183,9 +189,17 @@ export const usePeople = () => {
         }
     };
 
-    // Initial fetch
+    // Fetch on mount and whenever auth state changes (login/logout)
     useEffect(() => {
         fetchPeople();
+
+        const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+            fetchPeople();
+        });
+
+        return () => {
+            authListener?.subscription.unsubscribe();
+        };
     }, []);
 
     // CRUD Operations
@@ -401,8 +415,17 @@ export const usePeople = () => {
     };
 
     const updateHealthRecord = async (recordId: string, updates: { title?: string; date?: string; notes?: string; type?: string; sharedWithCollaboratorIds?: string[] }) => {
-        const { error } = await supabase.from('health_records').update(updates).eq('id', recordId);
-        if (error) throw error;
+        // Build database update object excluding non-DB fields
+        const dbUpdates: any = {};
+        if (updates.title !== undefined) dbUpdates.title = updates.title;
+        if (updates.date !== undefined) dbUpdates.date = updates.date;
+        if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+        if (updates.type !== undefined) dbUpdates.type = updates.type;
+
+        if (Object.keys(dbUpdates).length > 0) {
+            const { error } = await supabase.from('health_records').update(dbUpdates).eq('id', recordId);
+            if (error) throw error;
+        }
 
         // Update item_shares if sharedWithCollaboratorIds is provided
         if (updates.sharedWithCollaboratorIds !== undefined) {
@@ -458,8 +481,15 @@ export const usePeople = () => {
     };
 
     const updateNote = async (noteId: string, updates: { title?: string; content?: string; sharedWithCollaboratorIds?: string[] }) => {
-        const { error } = await supabase.from('notes').update(updates).eq('id', noteId);
-        if (error) throw error;
+        // Build database update object excluding non-DB fields
+        const dbUpdates: any = {};
+        if (updates.title !== undefined) dbUpdates.title = updates.title;
+        if (updates.content !== undefined) dbUpdates.content = updates.content;
+
+        if (Object.keys(dbUpdates).length > 0) {
+            const { error } = await supabase.from('notes').update(dbUpdates).eq('id', noteId);
+            if (error) throw error;
+        }
 
         // Update item_shares if sharedWithCollaboratorIds is provided
         if (updates.sharedWithCollaboratorIds !== undefined) {
@@ -517,8 +547,17 @@ export const usePeople = () => {
     };
 
     const updateFinanceRecord = async (recordId: string, updates: { title?: string; amount?: number; type?: string; date?: string; sharedWithCollaboratorIds?: string[] }) => {
-        const { error } = await supabase.from('financial_records').update(updates).eq('id', recordId);
-        if (error) throw error;
+        // Build database update object excluding non-DB fields
+        const dbUpdates: any = {};
+        if (updates.title !== undefined) dbUpdates.title = updates.title;
+        if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+        if (updates.type !== undefined) dbUpdates.type = updates.type;
+        if (updates.date !== undefined) dbUpdates.date = updates.date;
+
+        if (Object.keys(dbUpdates).length > 0) {
+            const { error } = await supabase.from('financial_records').update(dbUpdates).eq('id', recordId);
+            if (error) throw error;
+        }
 
         // Update item_shares if sharedWithCollaboratorIds is provided
         if (updates.sharedWithCollaboratorIds !== undefined) {
