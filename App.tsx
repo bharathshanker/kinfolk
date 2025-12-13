@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { Person, User as AppUser, RecordType } from './types';
 import { Newsfeed } from './components/Newsfeed';
 import { PersonDetail } from './components/PersonDetail';
 import { ChatBot } from './components/ChatBot';
+import { InvitePage } from './components/InvitePage';
 import { Icon, Avatar, Button, Card, Input } from './components/Shared';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { supabase } from './src/lib/supabase';
@@ -233,16 +234,47 @@ const AppContent: React.FC = () => {
     shareRecord,
     unshareRecord,
     linkProfileToUser,
+    generateInviteLink,
     sendCollaborationRequest,
     fetchPendingCollaborationRequests,
     acceptCollaborationRequest,
-    declineCollaborationRequest
+    declineCollaborationRequest,
+    removeCollaborator
   } = usePeople();
   const [activePersonId, setActivePersonId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<RecordType>(RecordType.PROFILE);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
   const [pendingCollaborationRequests, setPendingCollaborationRequests] = useState<Array<any>>([]);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+
+  // Check for invite token in URL
+  useEffect(() => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/invite\/([a-zA-Z0-9]+)$/);
+    if (match) {
+      setInviteToken(match[1]);
+    }
+    
+    // Handle popstate (back/forward navigation)
+    const handlePopState = () => {
+      const newPath = window.location.pathname;
+      const newMatch = newPath.match(/^\/invite\/([a-zA-Z0-9]+)$/);
+      setInviteToken(newMatch ? newMatch[1] : null);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Check for pending invite after login
+  useEffect(() => {
+    const pendingToken = sessionStorage.getItem('pendingInviteToken');
+    if (pendingToken && user) {
+      sessionStorage.removeItem('pendingInviteToken');
+      setInviteToken(pendingToken);
+    }
+  }, [user]);
 
   // Fetch pending collaboration requests
   const refreshCollaborationRequests = React.useCallback(async () => {
@@ -256,9 +288,9 @@ const AppContent: React.FC = () => {
     refreshCollaborationRequests();
   }, [refreshCollaborationRequests]);
 
-  const handleAcceptCollaborationRequest = async (requestId: string, mergeIntoPersonId: string | null) => {
+  const handleAcceptCollaborationRequest = async (requestId: string, mergeIntoPersonId: string | null, createNewProfile: boolean = false) => {
     if (acceptCollaborationRequest) {
-      await acceptCollaborationRequest(requestId, mergeIntoPersonId);
+      await acceptCollaborationRequest(requestId, mergeIntoPersonId, createNewProfile);
       await refreshCollaborationRequests();
     }
   };
@@ -268,6 +300,12 @@ const AppContent: React.FC = () => {
       await declineCollaborationRequest(requestId);
       await refreshCollaborationRequests();
     }
+  };
+
+  // Handle closing invite page and redirecting to dashboard
+  const handleCloseInvite = () => {
+    setInviteToken(null);
+    window.history.pushState({}, '', '/');
   };
 
   // Handler for selecting a person with optional tab
@@ -281,6 +319,24 @@ const AppContent: React.FC = () => {
 
   if (authLoading || peopleLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-cream"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div></div>;
+  }
+
+  // Show invite page if there's an invite token
+  if (inviteToken) {
+    return (
+      <InvitePage
+        token={inviteToken}
+        onAccept={handleAcceptCollaborationRequest}
+        onClose={handleCloseInvite}
+        people={people.map(p => ({ id: p.id, name: p.name, relation: p.relation }))}
+        isLoggedIn={!!user}
+        onLogin={() => {
+          // Store the invite token in sessionStorage so it persists after login
+          sessionStorage.setItem('pendingInviteToken', inviteToken);
+          // Redirect to login (will be handled by LoginScreen)
+        }}
+      />
+    );
   }
 
   if (!user) {
@@ -402,6 +458,8 @@ const AppContent: React.FC = () => {
                 onUnshareRecord={unshareRecord}
                 onLinkToUser={linkProfileToUser}
                 onSendCollaborationRequest={sendCollaborationRequest}
+                onGenerateInviteLink={generateInviteLink}
+                onRemoveCollaborator={removeCollaborator}
               />
             ) : (
               <Newsfeed

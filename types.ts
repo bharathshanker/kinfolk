@@ -41,7 +41,10 @@ export interface RecordShare {
 export interface SharedFromInfo {
   userId: string;
   userName: string;
+  userEmail?: string;
+  userAvatarUrl?: string;
   sourcePersonName: string;
+  sharedAt?: Date;
 }
 
 export interface HealthRecord {
@@ -153,6 +156,39 @@ export interface CollaborationRequest {
   targetEmail?: string;
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
   mergedIntoPersonId?: string;
+  inviteToken?: string;
+  profileSnapshot?: ProfileSnapshot;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Profile snapshot for collaboration request preview
+export interface ProfileSnapshot {
+  name: string;
+  relation: string;
+  avatarUrl: string;
+  birthday?: string;
+  email?: string;
+}
+
+// Profile link for bidirectional sync between two profiles
+export interface ProfileLink {
+  id: string;
+  profileAId: string;
+  profileBId: string;
+  userAId: string;
+  userBId: string;
+  isActive: boolean;
+  collaborationRequestId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Collaborator info for display
+export interface Collaborator {
+  id: string; // person_share_id
+  userId: string;
+  name: string;
+  email?: string;
+  avatarUrl?: string;
 }

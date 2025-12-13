@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Person, TodoItem, HealthRecord, RecordType, CollaborationRequest } from '../types';
+import { Person, TodoItem, HealthRecord, RecordType, CollaborationRequest, ProfileSnapshot } from '../types';
 import { Card, Icon, Avatar, Badge, Button, Modal, Input } from './Shared';
 
 interface NewsfeedProps {
@@ -7,139 +7,276 @@ interface NewsfeedProps {
   onSelectPerson: (id: string, tab?: RecordType) => void;
   onAddPerson: () => void;
   pendingCollaborationRequests?: CollaborationRequest[];
-  onAcceptCollaborationRequest?: (requestId: string, mergeIntoPersonId: string | null) => Promise<void>;
+  onAcceptCollaborationRequest?: (requestId: string, mergeIntoPersonId: string | null, createNew?: boolean) => Promise<void>;
   onDeclineCollaborationRequest?: (requestId: string) => Promise<void>;
 }
+
+// Profile Preview Card for Collaboration Request
+const ProfilePreviewCard: React.FC<{
+  snapshot?: ProfileSnapshot;
+  personName: string;
+  requesterName: string;
+  requesterEmail: string;
+}> = ({ snapshot, personName, requesterName, requesterEmail }) => {
+  const avatarUrl = snapshot?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${personName}`;
+  
+  return (
+    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+      <img 
+        src={avatarUrl} 
+        alt={personName}
+        className="w-16 h-16 rounded-full border-2 border-white shadow-md object-cover"
+      />
+      <div className="flex-1">
+        <h4 className="font-bold text-stone-800 text-lg">{snapshot?.name || personName}</h4>
+        {snapshot?.relation && (
+          <p className="text-sm text-stone-500">{snapshot.relation}</p>
+        )}
+        {snapshot?.birthday && (
+          <p className="text-xs text-stone-400 mt-1">
+            <Icon name="cake" className="text-xs mr-1" />
+            {new Date(snapshot.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // Collaboration Requests Shelf Component
 const CollaborationRequestsShelf: React.FC<{
   requests: CollaborationRequest[];
   people: Person[];
-  onAccept: (requestId: string, mergeIntoPersonId: string | null) => Promise<void>;
+  onAccept: (requestId: string, mergeIntoPersonId: string | null, createNew?: boolean) => Promise<void>;
   onDecline: (requestId: string) => Promise<void>;
   onCreateNewProfile: () => void;
 }> = ({ requests, people, onAccept, onDecline, onCreateNewProfile }) => {
   const [activeRequest, setActiveRequest] = useState<string | null>(null);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showMergeConfirm, setShowMergeConfirm] = useState(false);
 
   if (requests.length === 0) return null;
 
-  const handleAccept = async (requestId: string) => {
+  const handleAcceptWithNewProfile = async (requestId: string) => {
     setIsLoading(true);
     try {
-      await onAccept(requestId, selectedPersonId);
+      // Auto-create profile and accept in one step
+      await onAccept(requestId, null, true);
       setActiveRequest(null);
-      setSelectedPersonId(null);
     } catch (error) {
       console.error('Failed to accept request:', error);
-      alert('Failed to accept request. Please try again.');
+      alert('Failed to create profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCreateNew = (requestId: string) => {
-    // Open the add person modal - after the user creates a profile,
-    // they can return here and merge with the newly created profile.
-    // We do NOT auto-accept - keep the panel visible so user can complete the flow.
-    onCreateNewProfile();
-    // Reset active request but keep showing the collaboration requests shelf
-    // so user can select the newly created profile from the merge dropdown
-    setActiveRequest(null);
-    alert('Create your new profile. Once done, return here and select it from the "Merge with existing" dropdown to complete the collaboration.');
+  const handleMergeAndAccept = async (requestId: string) => {
+    if (!selectedPersonId) return;
+    
+    setIsLoading(true);
+    try {
+      await onAccept(requestId, selectedPersonId, false);
+      setActiveRequest(null);
+      setSelectedPersonId(null);
+      setShowMergeConfirm(false);
+    } catch (error) {
+      console.error('Failed to accept request:', error);
+      alert('Failed to merge profiles. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDecline = async (requestId: string) => {
+    setIsLoading(true);
+    try {
+      await onDecline(requestId);
+      setActiveRequest(null);
+    } catch (error) {
+      console.error('Failed to decline request:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-6">
-      <h3 className="font-bold text-indigo-800 flex items-center gap-2 mb-3">
-        <Icon name="notifications" className="text-indigo-500" />
-        Collaboration Requests ({requests.length})
+    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-5 mb-6 shadow-sm">
+      <h3 className="font-bold text-indigo-800 flex items-center gap-2 mb-4 text-lg">
+        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+          <Icon name="group_add" className="text-indigo-600" />
+        </div>
+        Collaboration Requests
+        <Badge text={`${requests.length}`} color="bg-indigo-500 text-white" />
       </h3>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {requests.map(request => (
-          <div key={request.id} className="bg-white rounded-xl p-4 border border-indigo-100">
-            <div className="flex justify-between items-start">
+          <div key={request.id} className="bg-white rounded-xl p-5 border border-indigo-100 shadow-sm">
+            {/* Requester Info */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                {request.requesterName.charAt(0).toUpperCase()}
+              </div>
               <div>
-                <p className="text-stone-800 font-medium">
-                  <span className="text-indigo-600">{request.requesterName}</span> wants to collaborate on
+                <p className="text-sm font-medium text-stone-800">
+                  <span className="text-indigo-600">{request.requesterName}</span> wants to collaborate
                 </p>
-                <p className="text-sm text-stone-500 mt-1">
-                  <strong>{request.personName}</strong> profile
-                </p>
+                <p className="text-xs text-stone-400">{request.requesterEmail}</p>
               </div>
             </div>
 
+            {/* Profile Preview */}
+            <ProfilePreviewCard
+              snapshot={request.profileSnapshot}
+              personName={request.personName}
+              requesterName={request.requesterName}
+              requesterEmail={request.requesterEmail}
+            />
+
             {activeRequest === request.id ? (
-              <div className="mt-4 p-3 bg-stone-50 rounded-xl">
-                <p className="text-sm text-stone-600 mb-3">
-                  How would you like to handle this?
-                </p>
-                <div className="space-y-2 mb-4">
-                  <Button
-                    variant="primary"
-                    onClick={() => handleCreateNew(request.id)}
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    Create New Profile
-                  </Button>
-                  <div className="relative">
-                    <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Or merge with existing:</label>
-                    <select
-                      value={selectedPersonId || ''}
-                      onChange={e => setSelectedPersonId(e.target.value || null)}
-                      className="w-full p-3 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-indigo-400"
-                    >
-                      <option value="">Select a profile...</option>
-                      {people.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.relation})
-                        </option>
-                      ))}
-                    </select>
+              <div className="mt-4">
+                {showMergeConfirm && selectedPersonId ? (
+                  // Merge Confirmation
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div className="flex items-start gap-3 mb-4">
+                      <Icon name="info" className="text-amber-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">Confirm Merge</p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          You are about to link <strong>{request.profileSnapshot?.name || request.personName}</strong> with your profile <strong>{people.find(p => p.id === selectedPersonId)?.name}</strong>.
+                        </p>
+                        <p className="text-xs text-amber-700 mt-2">
+                          Items shared by either of you will be visible to both. This action creates a bidirectional collaboration.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowMergeConfirm(false)}
+                        disabled={isLoading}
+                        className="flex-1"
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => handleMergeAndAccept(request.id)}
+                        disabled={isLoading}
+                        className="flex-1"
+                      >
+                        {isLoading ? 'Merging...' : 'Confirm & Merge'}
+                      </Button>
+                    </div>
                   </div>
-                  {selectedPersonId && (
-                    <Button
-                      variant="primary"
-                      onClick={() => handleAccept(request.id)}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? 'Merging...' : 'Merge & Accept'}
-                    </Button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setActiveRequest(null);
-                      setSelectedPersonId(null);
-                    }}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => onDecline(request.id)}
-                    disabled={isLoading}
-                    className="flex-1 text-red-400 hover:text-red-600"
-                  >
-                    Decline
-                  </Button>
-                </div>
+                ) : (
+                  // Action Options
+                  <div className="space-y-4">
+                    <p className="text-sm text-stone-600 font-medium">
+                      How would you like to handle this collaboration?
+                    </p>
+
+                    {/* Option 1: Create New Profile */}
+                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                          <Icon name="person_add" className="text-indigo-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-stone-800">Create as New Profile</p>
+                          <p className="text-xs text-stone-500 mt-1">
+                            Add this person to your circle as a new profile. Perfect if you don't already have a profile for them.
+                          </p>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleAcceptWithNewProfile(request.id)}
+                            disabled={isLoading}
+                            className="mt-3"
+                          >
+                            {isLoading ? 'Creating...' : 'Create New Profile'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Merge with Existing */}
+                    {people.length > 0 && (
+                      <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+                            <Icon name="merge" className="text-stone-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-stone-800">Merge with Existing Profile</p>
+                            <p className="text-xs text-stone-500 mt-1">
+                              If you already have a profile for this person, link them together for shared updates.
+                            </p>
+                            <div className="mt-3">
+                              <select
+                                value={selectedPersonId || ''}
+                                onChange={e => setSelectedPersonId(e.target.value || null)}
+                                className="w-full p-2 bg-white border border-stone-200 rounded-lg text-sm outline-none focus:border-indigo-400"
+                              >
+                                <option value="">Select a profile...</option>
+                                {people.map(p => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} ({p.relation})
+                                  </option>
+                                ))}
+                              </select>
+                              {selectedPersonId && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => setShowMergeConfirm(true)}
+                                  disabled={isLoading}
+                                  className="mt-2 w-full"
+                                >
+                                  Merge Profiles
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cancel / Decline */}
+                    <div className="flex gap-2 pt-2 border-t border-stone-100">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setActiveRequest(null);
+                          setSelectedPersonId(null);
+                        }}
+                        disabled={isLoading}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleDecline(request.id)}
+                        disabled={isLoading}
+                        className="flex-1 text-red-400 hover:text-red-600 hover:bg-red-50"
+                      >
+                        Decline Request
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-4 flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onDecline(request.id)}
+                  onClick={() => handleDecline(request.id)}
                   className="text-stone-500"
+                  disabled={isLoading}
                 >
                   Decline
                 </Button>
@@ -147,7 +284,9 @@ const CollaborationRequestsShelf: React.FC<{
                   variant="primary"
                   size="sm"
                   onClick={() => setActiveRequest(request.id)}
+                  disabled={isLoading}
                 >
+                  <Icon name="visibility" className="mr-1" />
                   Review & Accept
                 </Button>
               </div>
