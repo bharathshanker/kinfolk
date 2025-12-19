@@ -8,7 +8,10 @@ const { Client } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const connectionString = 'postgresql://postgres:Sai@parti2311@db.dkmntyruxypkebviwlrl.supabase.co:5432/postgres';
+const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+    throw new Error('Missing SUPABASE_DB_URL (or DATABASE_URL). Refusing to connect without an env-provided connection string.');
+}
 
 const client = new Client({
     connectionString,

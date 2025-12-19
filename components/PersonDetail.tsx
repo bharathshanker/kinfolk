@@ -1355,10 +1355,11 @@ const ShareSettingsModal: React.FC<{
           }
 
           // 3. Fetch collaboration requests (to filter dropdown)
-          const { data: requestsData } = await supabase
+          const { data: requestsData, error: requestsError } = await supabase
             .from('collaboration_requests')
             .select('target_user_id, target_email, status')
             .eq('person_id', person.id);
+          const safeRequestsData = requestsError ? [] : (requestsData || []);
 
           setCollaboratorDetails(allCollaborators);
 
@@ -1377,7 +1378,7 @@ const ShareSettingsModal: React.FC<{
               if (isCollab) return false;
 
               // Filter out if there's an existing request (pending or accepted)
-              const hasRequest = requestsData?.some(req => 
+              const hasRequest = safeRequestsData.some(req => 
                 (req.target_user_id && req.target_user_id === p.linked_user_id) || 
                 (req.target_email && req.target_email === p.email)
               );

@@ -1,7 +1,10 @@
 import pg from 'pg';
 const { Client } = pg;
 
-const connectionString = 'postgresql://postgres:Sai@parti2311@db.dkmntyruxypkebviwlrl.supabase.co:5432/postgres';
+const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+    throw new Error('Missing SUPABASE_DB_URL (or DATABASE_URL). Refusing to connect without an env-provided connection string.');
+}
 
 async function checkDb() {
     const client = new Client({ connectionString });
