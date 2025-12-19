@@ -1314,7 +1314,55 @@ const ShareSettingsModal: React.FC<{
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Fetch other profiles
+          // 1. Fetch collaborator details (from person_shares)
+          const { data: sharesData, error: sharesError } = await supabase
+            .from('person_shares')
+            .select('id, user_id, user_email, profiles(id, full_name, email)')
+            .eq('person_id', person.id)
+            .not('user_id', 'is', null);
+
+          // 2. Fetch linked profiles (from profile_links)
+          const { data: linksData, error: linksError } = await supabase
+            .from('profile_links')
+            .select('id, user_a_id, user_b_id, profile_a_id, profile_b_id, profiles!user_a_id(id, full_name, email), profiles_b:profiles!user_b_id(id, full_name, email)')
+            .or(`profile_a_id.eq.${person.id},profile_b_id.eq.${person.id}`)
+            .eq('is_active', true);
+
+          let allCollaborators: Array<{id: string; name: string; email?: string; userId?: string}> = [];
+
+          if (!sharesError && sharesData) {
+            allCollaborators = sharesData.map(s => ({
+              id: s.id,
+              name: (s.profiles as any)?.full_name || s.user_email || 'Unknown',
+              email: (s.profiles as any)?.email || s.user_email,
+              userId: s.user_id || undefined
+            }));
+          }
+
+          if (!linksError && linksData) {
+            linksData.forEach(link => {
+              // The collaborator is whoever is NOT the person being viewed
+              const otherUser = link.profile_a_id === person.id ? (link as any).profiles_b : (link as any).profiles;
+              if (otherUser && !allCollaborators.some(c => c.userId === otherUser.id)) {
+                allCollaborators.push({
+                  id: link.id,
+                  name: otherUser.full_name || 'Unknown',
+                  email: otherUser.email,
+                  userId: otherUser.id
+                });
+              }
+            });
+          }
+
+          // 3. Fetch collaboration requests (to filter dropdown)
+          const { data: requestsData } = await supabase
+            .from('collaboration_requests')
+            .select('target_user_id, target_email, status')
+            .eq('person_id', person.id);
+
+          setCollaboratorDetails(allCollaborators);
+
+          // 4. Fetch other profiles (to invite)
           const { data: profilesData, error: profilesError } = await supabase
             .from('people')
             .select('*')
@@ -1323,7 +1371,20 @@ const ShareSettingsModal: React.FC<{
             .order('name');
 
           if (!profilesError && profilesData) {
-            setAvailableProfiles(profilesData.map(p => ({
+            const filteredProfiles = profilesData.filter(p => {
+              // Filter out if already a collaborator
+              const isCollab = allCollaborators.some(c => c.userId === p.linked_user_id || (c.email && c.email === p.email));
+              if (isCollab) return false;
+
+              // Filter out if there's an existing request (pending or accepted)
+              const hasRequest = requestsData?.some(req => 
+                (req.target_user_id && req.target_user_id === p.linked_user_id) || 
+                (req.target_email && req.target_email === p.email)
+              );
+              return !hasRequest;
+            });
+            
+            setAvailableProfiles(filteredProfiles.map(p => ({
               id: p.id,
               name: p.name,
               relation: p.relation || '',
@@ -1338,22 +1399,6 @@ const ShareSettingsModal: React.FC<{
               todos: [],
               financial: [],
               notes: []
-            })));
-          }
-
-          // Fetch collaborator details
-          const { data: sharesData, error: sharesError } = await supabase
-            .from('person_shares')
-            .select('id, user_id, user_email, profiles(id, full_name, email)')
-            .eq('person_id', person.id)
-            .not('user_id', 'is', null);
-
-          if (!sharesError && sharesData) {
-            setCollaboratorDetails(sharesData.map(s => ({
-              id: s.id,
-              name: (s.profiles as any)?.full_name || s.user_email || 'Unknown',
-              email: (s.profiles as any)?.email || s.user_email,
-              userId: s.user_id || undefined
             })));
           }
         } catch (err) {
