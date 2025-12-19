@@ -26,7 +26,7 @@ export const usePeople = () => {
                 return;
             }
 
-            // 1. Fetch People (owned by user)
+            // 1. Fetch People (all accessible to user via RLS)
             const { data: peopleData, error: peopleError } = await supabase
                 .from('people')
                 .select('*')
@@ -54,7 +54,23 @@ export const usePeople = () => {
                 })));
             }
 
-            const personIds = peopleData.map(p => p.id);
+            // Hide linked duplicates: when a non-owned profile is linked to an owned profile,
+            // we show only the owned one in the circle, but still surface shared items via remapping below.
+            const allPeople = peopleData || [];
+            const ownedPersonIds = new Set(allPeople.filter(p => p.created_by === user.id).map(p => p.id));
+            const linkedToOwnedNonOwned = new Set<string>();
+            (linksData || []).forEach((l: any) => {
+                if (ownedPersonIds.has(l.profile_a_id) && !ownedPersonIds.has(l.profile_b_id)) {
+                    linkedToOwnedNonOwned.add(l.profile_b_id);
+                }
+                if (ownedPersonIds.has(l.profile_b_id) && !ownedPersonIds.has(l.profile_a_id)) {
+                    linkedToOwnedNonOwned.add(l.profile_a_id);
+                }
+            });
+
+            const visiblePeopleData = allPeople.filter(p => p.created_by === user.id || !linkedToOwnedNonOwned.has(p.id));
+
+            const personIds = visiblePeopleData.map(p => p.id);
 
             if (personIds.length === 0) {
                 setPeople([]);
@@ -225,7 +241,7 @@ export const usePeople = () => {
             };
 
             // 6. Map to Domain Model
-            const mappedPeople: Person[] = peopleData.map(p => {
+            const mappedPeople: Person[] = visiblePeopleData.map(p => {
                 const pHealth = healthRes.data.filter(h => h.person_id === p.id);
                 const pTodos = todosRes.data.filter(t => t.person_id === p.id);
                 const pNotes = notesRes.data.filter(n => n.person_id === p.id);
@@ -246,7 +262,9 @@ export const usePeople = () => {
                 const noteItemShares = allItemShares.filter(is => is.record_type === 'NOTE');
                 const financeItemShares = allItemShares.filter(is => is.record_type === 'FINANCE');
 
-                // Add shared items to this person's records if they belong to a linked profile
+                // Add shared items to this person's records if they belong to a linked profile.
+                // If p is an owned profile linked to a remote profile, we remap item_shares targeting the remote
+                // profile onto the owned profile, so the user only sees one "Medhu" but still sees shared entries.
                 const linkedProfileIds = linksData
                     ?.filter(l => 
                         (l.profile_a_id === p.id && l.user_b_id === user.id) ||
@@ -255,7 +273,8 @@ export const usePeople = () => {
                     .map(l => l.profile_a_id === p.id ? l.profile_b_id : l.profile_a_id) || [];
 
                 // Find shared todos that belong to this person (via person_shares for this person)
-                const personSharesForPerson = myPersonShares?.filter(ps => ps.person_id === p.id) || [];
+                const relevantPersonIds = [p.id, ...linkedProfileIds];
+                const personSharesForPerson = myPersonShares?.filter(ps => relevantPersonIds.includes(ps.person_id)) || [];
                 const personShareIdsForPerson = personSharesForPerson.map(ps => ps.id);
                 
                 const sharedTodosForPerson = sharedTodos.filter(t => {
@@ -1168,6 +1187,22 @@ export const usePeople = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
 
+        // Build a lookup of "my saved contacts" so we can display requester names
+        // the same way a phone shows a contact name for an incoming message.
+        const { data: myContacts, error: contactsError } = await supabase
+            .from('people')
+            .select('name, email, linked_user_id')
+            .eq('created_by', user.id);
+
+        const contactNameByLinkedUserId = new Map<string, string>();
+        const contactNameByEmail = new Map<string, string>();
+        if (!contactsError && myContacts) {
+            myContacts.forEach((p: any) => {
+                if (p?.linked_user_id) contactNameByLinkedUserId.set(p.linked_user_id, p.name);
+                if (p?.email) contactNameByEmail.set(String(p.email).toLowerCase(), p.name);
+            });
+        }
+
         // Fetch requests where user is the target (by ID or email)
         const { data, error } = await supabase
             .from('collaboration_requests')
@@ -1185,22 +1220,34 @@ export const usePeople = () => {
             return [];
         }
 
-        return (data || []).map(req => ({
-            id: req.id,
-            personId: req.person_id,
-            personName: (req.person as any)?.name || req.profile_snapshot?.name || 'Unknown',
-            requesterId: req.requester_id,
-            requesterName: (req.requester as any)?.full_name || 'Unknown',
-            requesterEmail: (req.requester as any)?.email || '',
-            targetUserId: req.target_user_id,
-            targetEmail: req.target_email,
-            status: req.status as 'PENDING' | 'ACCEPTED' | 'DECLINED',
-            mergedIntoPersonId: req.merged_into_person_id,
-            inviteToken: req.invite_token,
-            profileSnapshot: req.profile_snapshot as ProfileSnapshot | undefined,
-            createdAt: new Date(req.created_at),
-            updatedAt: new Date(req.updated_at)
-        }));
+        return (data || []).map(req => {
+            const requesterProfile = (req.requester as any) || {};
+            const requesterEmail = (requesterProfile.email || '').toString();
+            const requesterId = (req.requester_id || '').toString();
+            const preferredRequesterName =
+                contactNameByLinkedUserId.get(requesterId) ||
+                (requesterEmail ? contactNameByEmail.get(requesterEmail.toLowerCase()) : undefined) ||
+                requesterProfile.full_name ||
+                'Unknown';
+
+            return {
+                id: req.id,
+                personId: req.person_id,
+                // Prefer snapshot because receivers typically cannot read the sender's people row pre-acceptance (RLS).
+                personName: req.profile_snapshot?.name || (req.person as any)?.name || 'Shared profile details unavailable',
+                requesterId: req.requester_id,
+                requesterName: preferredRequesterName,
+                requesterEmail,
+                targetUserId: req.target_user_id,
+                targetEmail: req.target_email,
+                status: req.status as 'PENDING' | 'ACCEPTED' | 'DECLINED',
+                mergedIntoPersonId: req.merged_into_person_id,
+                inviteToken: req.invite_token,
+                profileSnapshot: req.profile_snapshot as ProfileSnapshot | undefined,
+                createdAt: new Date(req.created_at),
+                updatedAt: new Date(req.updated_at)
+            };
+        });
     };
 
     // Fetch collaboration request by invite token (for invite landing page)
@@ -1219,9 +1266,9 @@ export const usePeople = () => {
     return {
         id: row.id,
         personId: row.person_id,
-        personName: (row.person as any)?.name || row.profile_snapshot?.name || 'Unknown',
-        personAvatarUrl: (row.person as any)?.avatar_url || row.profile_snapshot?.avatarUrl,
-        personRelation: (row.person as any)?.relation || row.profile_snapshot?.relation,
+        personName: row.profile_snapshot?.name || (row.person as any)?.name || 'Shared profile details unavailable',
+        personAvatarUrl: row.profile_snapshot?.avatarUrl || (row.person as any)?.avatar_url,
+        personRelation: row.profile_snapshot?.relation || (row.person as any)?.relation,
         requesterId: row.requester_id,
         requesterName: (row.requester as any)?.full_name || 'Unknown',
         requesterEmail: (row.requester as any)?.email || '',
@@ -1247,10 +1294,12 @@ export const usePeople = () => {
 
         if (fetchError || !request) throw new Error('Request not found');
 
+        // Merge rule: if mergeIntoPersonId is provided, we ALWAYS link into that profile and never create a new one.
+        const shouldCreateNewProfile = createNewProfile && !mergeIntoPersonId;
         let targetPersonId = mergeIntoPersonId;
 
         // If creating new profile, create it first
-        if (createNewProfile && !mergeIntoPersonId) {
+        if (shouldCreateNewProfile) {
             const snapshot = request.profile_snapshot as ProfileSnapshot;
             const { data: newPerson, error: createError } = await supabase
                 .from('people')

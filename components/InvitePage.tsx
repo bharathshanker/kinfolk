@@ -65,17 +65,46 @@ export const InvitePage: React.FC<InvitePageProps> = ({
           return;
         }
 
+        // Prefer snapshot for shared profile preview (receivers may not have access to sender's people row pre-acceptance)
+        const snapshot = data.profile_snapshot as ProfileSnapshot | undefined;
+
+        let requesterName = (data.requester as any)?.full_name || 'Unknown';
+        const requesterEmail = (data.requester as any)?.email || '';
+
+        // If logged in, show requester name as saved in receiver's contacts (linked_user_id/email match)
+        if (isLoggedIn) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: myContacts } = await supabase
+              .from('people')
+              .select('name, email, linked_user_id')
+              .eq('created_by', user.id);
+
+            const byLinkedId = new Map<string, string>();
+            const byEmail = new Map<string, string>();
+            (myContacts || []).forEach((p: any) => {
+              if (p?.linked_user_id) byLinkedId.set(p.linked_user_id, p.name);
+              if (p?.email) byEmail.set(String(p.email).toLowerCase(), p.name);
+            });
+
+            requesterName =
+              byLinkedId.get(data.requester_id) ||
+              (requesterEmail ? byEmail.get(String(requesterEmail).toLowerCase()) : undefined) ||
+              requesterName;
+          }
+        }
+
         setInviteDetails({
           id: data.id,
           personId: data.person_id,
-          personName: (data.person as any)?.name || data.profile_snapshot?.name || 'Unknown',
-          personAvatarUrl: (data.person as any)?.avatar_url || data.profile_snapshot?.avatarUrl,
-          personRelation: (data.person as any)?.relation || data.profile_snapshot?.relation,
+          personName: snapshot?.name || (data.person as any)?.name || 'Shared profile details unavailable',
+          personAvatarUrl: snapshot?.avatarUrl || (data.person as any)?.avatar_url,
+          personRelation: snapshot?.relation || (data.person as any)?.relation,
           requesterId: data.requester_id,
-          requesterName: (data.requester as any)?.full_name || 'Unknown',
-          requesterEmail: (data.requester as any)?.email || '',
+          requesterName,
+          requesterEmail,
           requesterAvatarUrl: (data.requester as any)?.avatar_url,
-          profileSnapshot: data.profile_snapshot,
+          profileSnapshot: snapshot,
           status: data.status
         });
       } catch (err: any) {
@@ -87,7 +116,7 @@ export const InvitePage: React.FC<InvitePageProps> = ({
     };
 
     fetchInviteDetails();
-  }, [token]);
+  }, [token, isLoggedIn]);
 
   const handleAcceptWithNewProfile = async () => {
     if (!inviteDetails) return;
