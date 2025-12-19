@@ -1279,6 +1279,7 @@ export const usePeople = () => {
         });
         if (shareError1 && !shareError1.message.includes('duplicate')) {
             console.error('Error creating person_share for acceptor:', shareError1);
+            throw new Error('Failed to create sharing access. Please try again.');
         }
 
         // 2. If we have a target person, share it with the requester (bidirectional)
@@ -1290,6 +1291,7 @@ export const usePeople = () => {
             });
             if (shareError2 && !shareError2.message.includes('duplicate')) {
                 console.error('Error creating person_share for requester:', shareError2);
+                throw new Error('Failed to create bidirectional sharing. Please try again.');
             }
 
             // 3. Create profile_links for bidirectional sync
@@ -1303,6 +1305,7 @@ export const usePeople = () => {
             });
             if (linkError && !linkError.message.includes('duplicate')) {
                 console.error('Error creating profile_link:', linkError);
+                throw new Error('Failed to link profiles. Please try again.');
             }
         }
 
