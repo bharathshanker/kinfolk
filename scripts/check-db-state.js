@@ -1,26 +1,15 @@
 import pg from 'pg';
 const { Client } = pg;
 
-const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
-if (!connectionString) {
-    throw new Error('Missing SUPABASE_DB_URL (or DATABASE_URL). Refusing to connect without an env-provided connection string.');
-}
+const connectionString = process.env.SUPABASE_DB_URL || 'postgresql://postgres:Sai@parti2311@db.dkmntyruxypkebviwlrl.supabase.co:5432/postgres';
 
 async function checkDb() {
     const client = new Client({ connectionString });
     try {
         await client.connect();
         
-        console.log('--- PEOPLE ---');
-        const people = await client.query('SELECT id, name, created_by, email, linked_user_id FROM people');
-        console.table(people.rows);
-
-        console.log('--- PROFILES ---');
-        const profiles = await client.query('SELECT id, full_name, email FROM profiles');
-        console.table(profiles.rows);
-
         console.log('--- COLLABORATION REQUESTS ---');
-        const requests = await client.query('SELECT id, person_id, requester_id, target_user_id, target_email, status FROM collaboration_requests');
+        const requests = await client.query('SELECT id, person_id, requester_id, target_user_id, status FROM collaboration_requests');
         console.table(requests.rows);
 
         console.log('--- PROFILE LINKS ---');
@@ -31,6 +20,14 @@ async function checkDb() {
         const shares = await client.query('SELECT id, person_id, user_id, user_email FROM person_shares');
         console.table(shares.rows);
 
+        console.log('--- TODOS ---');
+        const todos = await client.query('SELECT id, person_id, title, created_by FROM todos');
+        console.table(todos.rows);
+
+        console.log('--- ITEM SHARES ---');
+        const itemShares = await client.query('SELECT id, record_type, record_id, person_share_id, created_by FROM item_shares');
+        console.table(itemShares.rows);
+
     } catch (err) {
         console.error(err);
     } finally {
@@ -39,4 +36,3 @@ async function checkDb() {
 }
 
 checkDb();
-

@@ -70,20 +70,14 @@ export const usePeople = () => {
 
             const visiblePeopleData = allPeople.filter(p => p.created_by === user.id || !linkedToOwnedNonOwned.has(p.id));
 
-            const personIds = visiblePeopleData.map(p => p.id);
+            // 3. Fetch related data for all people (including hidden linked ones)
+            const personIds = allPeople.map(p => p.id);
 
-            if (personIds.length === 0) {
-                setPeople([]);
-                setLoading(false);
-                return;
-            }
-
-            // 3. Fetch related data for all people
             const [healthRes, todosRes, notesRes, financeRes, sharesRes] = await Promise.all([
-                supabase.from('health_records').select('*').in('person_id', personIds),
-                supabase.from('todos').select('*').in('person_id', personIds),
-                supabase.from('notes').select('*').in('person_id', personIds),
-                supabase.from('financial_records').select('*').in('person_id', personIds),
+                supabase.from('health_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('todos').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('notes').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('financial_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
                 supabase.from('person_shares').select('*, profiles(id, full_name, email, avatar_url)').in('person_id', personIds)
             ]);
 
@@ -242,10 +236,20 @@ export const usePeople = () => {
 
             // 6. Map to Domain Model
             const mappedPeople: Person[] = visiblePeopleData.map(p => {
-                const pHealth = healthRes.data.filter(h => h.person_id === p.id);
-                const pTodos = todosRes.data.filter(t => t.person_id === p.id);
-                const pNotes = notesRes.data.filter(n => n.person_id === p.id);
-                const pFinance = financeRes.data.filter(f => f.person_id === p.id);
+                // Collect items from this person AND all linked counterparts
+                const relevantPersonIds = [p.id, ...linksData
+                    ?.filter(l => 
+                        (l.profile_a_id === p.id && l.user_b_id === user.id) ||
+                        (l.profile_b_id === p.id && l.user_a_id === user.id)
+                    )
+                    .map(l => l.profile_a_id === p.id ? l.profile_b_id : l.profile_a_id) || []];
+
+                const pHealth = healthRes.data.filter(h => relevantPersonIds.includes(h.person_id));
+                const pTodos = todosRes.data.filter(t => relevantPersonIds.includes(t.person_id));
+                const pNotes = notesRes.data.filter(n => relevantPersonIds.includes(n.person_id));
+                const pFinance = financeRes.data.filter(f => relevantPersonIds.includes(f.person_id));
+                
+                // Get person shares only for the LOCAL person p
                 const pShares = sharesRes.data.filter(s => s.person_id === p.id);
 
                 // Build collaborators list with full info
@@ -256,24 +260,13 @@ export const usePeople = () => {
                         return profile?.full_name || s.user_email || 'Unknown';
                     });
 
-                // Get item shares for each record type
+                // Get item shares for each record type (for items owned by user)
                 const healthItemShares = allItemShares.filter(is => is.record_type === 'HEALTH');
                 const todoItemShares = allItemShares.filter(is => is.record_type === 'TODO');
                 const noteItemShares = allItemShares.filter(is => is.record_type === 'NOTE');
                 const financeItemShares = allItemShares.filter(is => is.record_type === 'FINANCE');
 
-                // Add shared items to this person's records if they belong to a linked profile.
-                // If p is an owned profile linked to a remote profile, we remap item_shares targeting the remote
-                // profile onto the owned profile, so the user only sees one "Medhu" but still sees shared entries.
-                const linkedProfileIds = linksData
-                    ?.filter(l => 
-                        (l.profile_a_id === p.id && l.user_b_id === user.id) ||
-                        (l.profile_b_id === p.id && l.user_a_id === user.id)
-                    )
-                    .map(l => l.profile_a_id === p.id ? l.profile_b_id : l.profile_a_id) || [];
-
-                // Find shared todos that belong to this person (via person_shares for this person)
-                const relevantPersonIds = [p.id, ...linkedProfileIds];
+                // Find shared items that are shared with me explicitly (fallback for non-linked sharing)
                 const personSharesForPerson = myPersonShares?.filter(ps => relevantPersonIds.includes(ps.person_id)) || [];
                 const personShareIdsForPerson = personSharesForPerson.map(ps => ps.id);
                 
@@ -305,6 +298,85 @@ export const usePeople = () => {
                     return !!itemShare;
                 });
 
+                // Helper to create domain objects with proper attribution
+                const mapRecord = (record: any, type: 'HEALTH' | 'TODO' | 'NOTE' | 'FINANCE') => {
+                    const creator = record.creator as any;
+                    const isOwned = record.created_by === user.id;
+                    
+                    let sharedFrom: SharedFromInfo | undefined = undefined;
+                    if (!isOwned && creator) {
+                        sharedFrom = {
+                            userId: creator.id,
+                            userName: creator.full_name || 'Unknown',
+                            userEmail: creator.email,
+                            userAvatarUrl: creator.avatar_url,
+                            sourcePersonName: '', // Optional
+                            sharedAt: new Date(record.created_at)
+                        };
+                    } else if (!isOwned) {
+                        // Fallback to explicit sharing info if creator join failed
+                        sharedFrom = getSharedFromInfo(type, record.id);
+                    }
+
+                    // Base record mapping
+                    const base = {
+                        id: record.id,
+                        title: record.title || '',
+                        date: record.date || record.due_date || '',
+                        meta: {
+                            isShared: !isOwned || allItemShares.some(is => is.record_id === record.id),
+                            sharedWith: collaborators,
+                            lastUpdatedBy: isOwned ? 'You' : (sharedFrom?.userName || 'Collaborator'),
+                            updatedAt: new Date(record.created_at || '')
+                        },
+                        sharedFrom
+                    };
+
+                    if (type === 'HEALTH') {
+                        return {
+                            ...base,
+                            type: (record.type as any) || 'OTHER',
+                            notes: record.notes || '',
+                            attachments: record.attachments || [],
+                            sharedWithCollaboratorIds: healthItemShares.filter(is => is.record_id === record.id).map(is => is.person_share_id)
+                        };
+                    } else if (type === 'TODO') {
+                        return {
+                            ...base,
+                            description: record.description || '',
+                            dueDate: record.due_date || '',
+                            isCompleted: record.is_completed || false,
+                            priority: (record.priority as any) || 'MEDIUM',
+                            sharedWithCollaboratorIds: todoItemShares.filter(is => is.record_id === record.id).map(is => is.person_share_id)
+                        };
+                    } else if (type === 'NOTE') {
+                        return {
+                            ...base,
+                            content: record.content || '',
+                            tags: record.tags || [],
+                            sharedWithCollaboratorIds: noteItemShares.filter(is => is.record_id === record.id).map(is => is.person_share_id)
+                        };
+                    } else if (type === 'FINANCE') {
+                        return {
+                            ...base,
+                            amount: record.amount || 0,
+                            type: (record.type as any) || 'EXPENSE',
+                            sharedWithCollaboratorIds: financeItemShares.filter(is => is.record_id === record.id).map(is => is.person_share_id)
+                        };
+                    }
+                    return base;
+                };
+
+                // Merge and deduplicate items
+                const deduplicate = (items: any[]) => {
+                    const seen = new Set();
+                    return items.filter(item => {
+                        if (seen.has(item.id)) return false;
+                        seen.add(item.id);
+                        return true;
+                    });
+                };
+
                 return {
                     id: p.id,
                     name: p.name,
@@ -316,108 +388,10 @@ export const usePeople = () => {
                     linkedUserId: p.linked_user_id || undefined,
                     collaborators,
                     sharingPreference: (p.sharing_preference as SharingPreference) || 'ASK_EVERY_TIME',
-                    health: [
-                        ...pHealth.map(h => ({
-                        id: h.id,
-                        title: h.title,
-                        date: h.date,
-                        type: (h.type as any) || 'OTHER',
-                        notes: h.notes || '',
-                        attachments: h.attachments || [],
-                        sharedWithCollaboratorIds: healthItemShares.filter(is => is.record_id === h.id).map(is => is.person_share_id),
-                            meta: { isShared: healthItemShares.some(is => is.record_id === h.id), sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(h.created_at || '') }
-                        })),
-                        ...sharedHealthForPerson.map(h => {
-                            const sharedFrom = getSharedFromInfo('HEALTH', h.id);
-                            if (sharedFrom) sharedFrom.sourcePersonName = (h.people as any)?.name || '';
-                            return {
-                                id: h.id,
-                                title: h.title,
-                                date: h.date,
-                                type: (h.type as any) || 'OTHER',
-                                notes: h.notes || '',
-                                attachments: h.attachments || [],
-                                sharedWithCollaboratorIds: [],
-                                sharedFrom,
-                                meta: { isShared: true, sharedWith: [], lastUpdatedBy: sharedFrom?.userName || 'Collaborator', updatedAt: new Date(h.created_at || '') }
-                            };
-                        })
-                    ],
-                    todos: [
-                        ...pTodos.map(t => ({
-                        id: t.id,
-                        title: t.title,
-                        description: (t as any).description || '',
-                        dueDate: t.due_date || '',
-                        isCompleted: t.is_completed || false,
-                        priority: (t.priority as any) || 'MEDIUM',
-                        sharedWithCollaboratorIds: todoItemShares.filter(is => is.record_id === t.id).map(is => is.person_share_id),
-                            meta: { isShared: todoItemShares.some(is => is.record_id === t.id), sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(t.created_at || '') }
-                        })),
-                        ...sharedTodosForPerson.map(t => {
-                            const sharedFrom = getSharedFromInfo('TODO', t.id);
-                            if (sharedFrom) sharedFrom.sourcePersonName = (t.people as any)?.name || '';
-                            return {
-                                id: t.id,
-                                title: t.title,
-                                description: (t as any).description || '',
-                                dueDate: t.due_date || '',
-                                isCompleted: t.is_completed || false,
-                                priority: (t.priority as any) || 'MEDIUM',
-                                sharedWithCollaboratorIds: [],
-                                sharedFrom,
-                                meta: { isShared: true, sharedWith: [], lastUpdatedBy: sharedFrom?.userName || 'Collaborator', updatedAt: new Date(t.created_at || '') }
-                            };
-                        })
-                    ],
-                    notes: [
-                        ...pNotes.map(n => ({
-                        id: n.id,
-                        title: n.title || '',
-                        content: n.content || '',
-                        tags: n.tags || [],
-                        sharedWithCollaboratorIds: noteItemShares.filter(is => is.record_id === n.id).map(is => is.person_share_id),
-                            meta: { isShared: noteItemShares.some(is => is.record_id === n.id), sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(n.created_at || '') }
-                        })),
-                        ...sharedNotesForPerson.map(n => {
-                            const sharedFrom = getSharedFromInfo('NOTE', n.id);
-                            if (sharedFrom) sharedFrom.sourcePersonName = (n.people as any)?.name || '';
-                            return {
-                                id: n.id,
-                                title: n.title || '',
-                                content: n.content || '',
-                                tags: n.tags || [],
-                                sharedWithCollaboratorIds: [],
-                                sharedFrom,
-                                meta: { isShared: true, sharedWith: [], lastUpdatedBy: sharedFrom?.userName || 'Collaborator', updatedAt: new Date(n.created_at || '') }
-                            };
-                        })
-                    ],
-                    financial: [
-                        ...pFinance.map(f => ({
-                        id: f.id,
-                        title: f.title,
-                        amount: f.amount,
-                        type: (f.type as any) || 'EXPENSE',
-                        date: f.date,
-                        sharedWithCollaboratorIds: financeItemShares.filter(is => is.record_id === f.id).map(is => is.person_share_id),
-                            meta: { isShared: financeItemShares.some(is => is.record_id === f.id), sharedWith: collaborators, lastUpdatedBy: 'You', updatedAt: new Date(f.created_at || '') }
-                        })),
-                        ...sharedFinanceForPerson.map(f => {
-                            const sharedFrom = getSharedFromInfo('FINANCE', f.id);
-                            if (sharedFrom) sharedFrom.sourcePersonName = (f.people as any)?.name || '';
-                            return {
-                                id: f.id,
-                                title: f.title,
-                                amount: f.amount,
-                                type: (f.type as any) || 'EXPENSE',
-                                date: f.date,
-                                sharedWithCollaboratorIds: [],
-                                sharedFrom,
-                                meta: { isShared: true, sharedWith: [], lastUpdatedBy: sharedFrom?.userName || 'Collaborator', updatedAt: new Date(f.created_at || '') }
-                            };
-                        })
-                    ]
+                    health: deduplicate([...pHealth.map(h => mapRecord(h, 'HEALTH')), ...sharedHealthForPerson.map(h => mapRecord(h, 'HEALTH'))]),
+                    todos: deduplicate([...pTodos.map(t => mapRecord(t, 'TODO')), ...sharedTodosForPerson.map(t => mapRecord(t, 'TODO'))]),
+                    notes: deduplicate([...pNotes.map(n => mapRecord(n, 'NOTE')), ...sharedNotesForPerson.map(n => mapRecord(n, 'NOTE'))]),
+                    financial: deduplicate([...pFinance.map(f => mapRecord(f, 'FINANCE')), ...sharedFinanceForPerson.map(f => mapRecord(f, 'FINANCE'))])
                 };
             });
 
