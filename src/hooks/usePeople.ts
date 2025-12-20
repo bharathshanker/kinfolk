@@ -87,7 +87,7 @@ export const usePeople = () => {
             if (financeRes.error) throw financeRes.error;
             if (sharesRes.error) throw sharesRes.error;
 
-            // 4. Fetch item_shares for all record types
+            // 4. Fetch item_shares for all record types (to know what we shared with others)
             const healthRecordIds = (healthRes.data || []).map(h => h.id);
             const todoRecordIds = (todosRes.data || []).map(t => t.id);
             const noteRecordIds = (notesRes.data || []).map(n => n.id);
@@ -139,7 +139,7 @@ export const usePeople = () => {
                 return res.data || [];
             });
 
-            // 5. Fetch items shared WITH this user via item_shares (from linked profiles)
+            // 5. Fetch items shared WITH this user via item_shares (fallback for non-linked sharing)
             // Get person_shares where this user is the collaborator
             const { data: myPersonShares } = await supabase
                 .from('person_shares')
@@ -170,22 +170,22 @@ export const usePeople = () => {
             const sharedRecordsPromises = [];
             if (sharedTodoIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('todos').select('*, people(name)').in('id', sharedTodoIds)
+                    supabase.from('todos').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedTodoIds)
                 );
             }
             if (sharedHealthIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('health_records').select('*, people(name)').in('id', sharedHealthIds)
+                    supabase.from('health_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedHealthIds)
                 );
             }
             if (sharedNoteIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('notes').select('*, people(name)').in('id', sharedNoteIds)
+                    supabase.from('notes').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedNoteIds)
                 );
             }
             if (sharedFinanceIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('financial_records').select('*, people(name)').in('id', sharedFinanceIds)
+                    supabase.from('financial_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedFinanceIds)
                 );
             }
 
@@ -238,10 +238,7 @@ export const usePeople = () => {
             const mappedPeople: Person[] = visiblePeopleData.map(p => {
                 // Collect items from this person AND all linked counterparts
                 const relevantPersonIds = [p.id, ...linksData
-                    ?.filter(l => 
-                        (l.profile_a_id === p.id && l.user_b_id === user.id) ||
-                        (l.profile_b_id === p.id && l.user_a_id === user.id)
-                    )
+                    ?.filter(l => l.profile_a_id === p.id || l.profile_b_id === p.id)
                     .map(l => l.profile_a_id === p.id ? l.profile_b_id : l.profile_a_id) || []];
 
                 const pHealth = healthRes.data.filter(h => relevantPersonIds.includes(h.person_id));
