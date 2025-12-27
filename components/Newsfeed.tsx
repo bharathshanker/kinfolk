@@ -298,18 +298,35 @@ const CollaborationRequestsShelf: React.FC<{
   );
 };
 
-export const Newsfeed: React.FC<NewsfeedProps> = ({ 
-  people, 
-  onSelectPerson, 
+export const Newsfeed: React.FC<NewsfeedProps> = ({
+  people,
+  onSelectPerson,
   onAddPerson,
   pendingCollaborationRequests = [],
   onAcceptCollaborationRequest,
   onDeclineCollaborationRequest
 }) => {
+  // Dynamic greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   // Aggregate upcoming items
   const allTodos = people.flatMap(p => p.todos.map(t => ({ ...t, person: p })))
     .filter(t => !t.isCompleted)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+  // Calculate stats
+  const totalPeople = people.length;
+  const pendingTodosCount = allTodos.length;
+  const recentHealthRecordsCount = people.reduce((count, p) => {
+    return count + p.health.filter(h =>
+      new Date(h.meta.updatedAt).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000
+    ).length;
+  }, 0);
 
   // Derive recent updates from actual data
   const recentUpdates = people.flatMap(p => {
@@ -368,6 +385,8 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
     .filter(p => p.daysUntil <= 30)
     .sort((a, b) => a.daysUntil - b.daysUntil);
 
+  const nextBirthday = upcomingBirthdays[0];
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-20">
@@ -375,7 +394,7 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
       {/* Welcome Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-stone-800 font-sans">Good Morning</h1>
+          <h1 className="text-3xl font-bold text-stone-800 font-sans animate-fade-in">{getGreeting()}</h1>
           <p className="text-stone-500 mt-1">Here's what's happening with your people.</p>
         </div>
         <div className="text-right hidden sm:block">
@@ -383,27 +402,103 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
         </div>
       </div>
 
+      {/* Quick Stats Dashboard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
+        <Card className="p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-rose-50 border-rose-100">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-rose-100 rounded-xl">
+              <Icon name="groups" className="text-rose-600 text-2xl" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-stone-800">{totalPeople}</p>
+              <p className="text-xs text-stone-500 font-medium">People</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-sky-50 border-sky-100">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-sky-100 rounded-xl">
+              <Icon name="task_alt" className="text-sky-600 text-2xl" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-stone-800">{pendingTodosCount}</p>
+              <p className="text-xs text-stone-500 font-medium">Pending</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-purple-50 border-purple-100">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-purple-100 rounded-xl">
+              <Icon name="favorite" className="text-purple-600 text-2xl" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-stone-800">{recentHealthRecordsCount}</p>
+              <p className="text-xs text-stone-500 font-medium">Health</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-amber-50 border-amber-100">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-100 rounded-xl">
+              <Icon name="cake" className="text-amber-600 text-2xl" />
+            </div>
+            <div>
+              {nextBirthday ? (
+                <>
+                  <p className="text-2xl font-bold text-stone-800">{nextBirthday.daysUntil}</p>
+                  <p className="text-xs text-stone-500 font-medium truncate">days to {nextBirthday.name}'s</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-stone-800">-</p>
+                  <p className="text-xs text-stone-500 font-medium">No upcoming</p>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {/* Horizontal Scroll People */}
       <section>
-        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-          {people.map(person => (
-            <div key={person.id} className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group" onClick={() => onSelectPerson(person.id)}>
-              <div className={`p-1 rounded-full ${person.themeColor} group-hover:ring-2 ring-offset-2 ring-stone-200 transition-all`}>
-                <Avatar src={person.avatarUrl} alt={person.name} size="w-16 h-16" />
+        {people.length === 0 ? (
+          <Card className="p-8 text-center bg-gradient-to-br from-rose-50 to-pink-50 border-rose-100">
+            <div className="w-20 h-20 mx-auto mb-4 bg-rose-100 rounded-full flex items-center justify-center">
+              <Icon name="group_add" className="text-rose-400 text-4xl" />
+            </div>
+            <h3 className="text-lg font-bold text-stone-800 mb-2">Start Your Circle</h3>
+            <p className="text-stone-500 text-sm mb-6 max-w-md mx-auto">
+              Add your first person to begin tracking their information, health records, and important dates all in one place.
+            </p>
+            <Button variant="primary" onClick={onAddPerson}>
+              <Icon name="add" className="mr-2" />
+              Add Your First Person
+            </Button>
+          </Card>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            {people.map(person => (
+              <div key={person.id} className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group" onClick={() => onSelectPerson(person.id)}>
+                <div className={`p-1 rounded-full ${person.themeColor} group-hover:ring-4 ring-offset-2 ring-stone-200 transition-all duration-200 group-hover:scale-110`}>
+                  <Avatar src={person.avatarUrl} alt={person.name} size="w-16 h-16" />
+                </div>
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition-colors">{person.name}</span>
               </div>
-              <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900">{person.name}</span>
+            ))}
+            <div
+              className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
+              onClick={onAddPerson}
+            >
+              <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center border-2 border-dashed border-stone-300 group-hover:border-rose-400 group-hover:bg-rose-50 transition-all duration-200 group-hover:scale-110">
+                <Icon name="add" className="text-stone-400 group-hover:text-rose-500 transition-colors" />
+              </div>
+              <span className="text-xs font-semibold text-stone-400 group-hover:text-rose-600 transition-colors">Add New</span>
             </div>
-          ))}
-          <div
-            className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
-            onClick={onAddPerson}
-          >
-            <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center border-2 border-dashed border-stone-300 group-hover:border-stone-400 group-hover:bg-stone-200 transition-all">
-              <Icon name="add" className="text-stone-400 group-hover:text-stone-600" />
-            </div>
-            <span className="text-xs font-semibold text-stone-400 group-hover:text-stone-600">Add New</span>
           </div>
-        </div>
+        )}
       </section>
 
       {/* Collaboration Requests Shelf */}
@@ -425,36 +520,65 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
         </h2>
 
         {/* Highlight Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Updates */}
-          {recentUpdates.map(update => (
-            <Card key={update.id} className="flex items-start gap-4 hover:bg-stone-50/50" onClick={() => onSelectPerson(update.personId, update.recordType)}>
-              <div className={`p-2 rounded-xl ${update.color}`}>
-                <Icon name={update.icon} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-stone-800">{update.text}</p>
-                <p className="text-xs text-stone-400 mt-1">{update.time}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
+        {recentUpdates.length === 0 ? (
+          <Card className="p-8 text-center bg-gradient-to-br from-sky-50 to-blue-50 border-sky-100">
+            <div className="w-16 h-16 mx-auto mb-4 bg-sky-100 rounded-full flex items-center justify-center">
+              <Icon name="update" className="text-sky-400 text-3xl" />
+            </div>
+            <h3 className="text-base font-bold text-stone-800 mb-2">No Recent Activity</h3>
+            <p className="text-stone-500 text-sm max-w-sm mx-auto">
+              Start adding health records, completing todos, or updating profiles to see activity here.
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Updates */}
+            {recentUpdates.map(update => (
+              <Card
+                key={update.id}
+                className="flex items-start gap-4 hover:shadow-lg cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:border-stone-200"
+                onClick={() => onSelectPerson(update.personId, update.recordType)}
+              >
+                <div className={`p-2 rounded-xl ${update.color} transition-transform duration-200 hover:scale-110`}>
+                  <Icon name={update.icon} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-stone-800">{update.text}</p>
+                  <p className="text-xs text-stone-400 mt-1">{update.time}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Combined Todos List */}
-        <Card className="p-0 overflow-hidden">
-          <div className="p-4 border-b border-stone-100 bg-stone-50 flex justify-between items-center">
-            <h3 className="font-semibold text-stone-700">Upcoming Priorities</h3>
-            <Badge text={`${allTodos.length} Pending`} />
+        <Card className="p-0 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+          <div className="p-4 border-b border-stone-100 bg-gradient-to-r from-stone-50 to-slate-50 flex justify-between items-center">
+            <h3 className="font-semibold text-stone-700 flex items-center gap-2">
+              <Icon name="checklist" className="text-stone-400" />
+              Upcoming Priorities
+            </h3>
+            <Badge text={`${allTodos.length} Pending`} color={allTodos.length > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"} />
           </div>
           <div className="divide-y divide-stone-100">
             {allTodos.length === 0 ? (
-              <div className="p-8 text-center text-stone-400">All caught up! 🎉</div>
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <Icon name="task_alt" className="text-emerald-500 text-3xl" />
+                </div>
+                <p className="text-stone-600 font-semibold mb-1">All caught up!</p>
+                <p className="text-stone-400 text-sm">No pending tasks at the moment</p>
+              </div>
             ) : (
               allTodos.slice(0, 5).map(todo => (
-                <div key={todo.id} className="p-4 flex items-center gap-3 hover:bg-stone-50 transition-colors cursor-pointer" onClick={() => onSelectPerson(todo.person.id, RecordType.TODO)}>
-                  <div className={`w-2 h-2 rounded-full ${todo.priority === 'HIGH' ? 'bg-red-400' : 'bg-stone-300'}`} />
+                <div
+                  key={todo.id}
+                  className="p-4 flex items-center gap-3 hover:bg-gradient-to-r hover:from-stone-50 hover:to-transparent transition-all duration-200 cursor-pointer group"
+                  onClick={() => onSelectPerson(todo.person.id, RecordType.TODO)}
+                >
+                  <div className={`w-2 h-2 rounded-full ${todo.priority === 'HIGH' ? 'bg-red-400 animate-pulse' : 'bg-stone-300'}`} />
                   <div className="flex-1">
-                    <p className="text-stone-800 font-medium text-sm line-through-active">{todo.title}</p>
+                    <p className="text-stone-800 font-medium text-sm group-hover:text-stone-900 transition-colors">{todo.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Avatar src={todo.person.avatarUrl} alt={todo.person.name} size="w-4 h-4" />
                       <span className="text-xs text-stone-500">{todo.person.name}</span>
@@ -462,7 +586,7 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
                       <span className="text-xs text-stone-500">Due {new Date(todo.dueDate).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <div className="w-5 h-5 rounded-full border-2 border-stone-300 hover:border-emerald-500 hover:bg-emerald-50 transition-all" />
+                  <div className="w-5 h-5 rounded-full border-2 border-stone-300 group-hover:border-emerald-500 group-hover:bg-emerald-50 group-hover:scale-110 transition-all duration-200" />
                 </div>
               ))
             )}
@@ -471,20 +595,31 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
 
         {/* Upcoming Birthdays */}
         {upcomingBirthdays.length > 0 && (
-          <Card className="p-0 overflow-hidden">
-            <div className="p-4 border-b border-stone-100 bg-gradient-to-r from-rose-50 to-pink-50 flex justify-between items-center">
+          <Card className="p-0 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            <div className="p-4 border-b border-stone-100 bg-gradient-to-r from-rose-50 via-pink-50 to-purple-50 flex justify-between items-center">
               <h3 className="font-semibold text-stone-700 flex items-center gap-2">
                 <Icon name="cake" className="text-rose-400" />
                 Upcoming Birthdays
               </h3>
-              <Badge text={`${upcomingBirthdays.length}`} color="bg-rose-100 text-rose-600" />
+              <Badge text={`${upcomingBirthdays.length}`} color="bg-rose-500 text-white" />
             </div>
             <div className="divide-y divide-stone-100">
               {upcomingBirthdays.map(person => (
-                <div key={person.id} className="p-4 flex items-center gap-3 hover:bg-stone-50 transition-colors cursor-pointer" onClick={() => onSelectPerson(person.id)}>
-                  <Avatar src={person.avatarUrl} alt={person.name} size="w-10 h-10" />
+                <div
+                  key={person.id}
+                  className="p-4 flex items-center gap-3 hover:bg-gradient-to-r hover:from-rose-50 hover:to-transparent transition-all duration-200 cursor-pointer group"
+                  onClick={() => onSelectPerson(person.id)}
+                >
+                  <div className="relative">
+                    <Avatar src={person.avatarUrl} alt={person.name} size="w-10 h-10" className="ring-2 ring-rose-100 group-hover:ring-rose-300 transition-all" />
+                    {person.daysUntil <= 3 && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center animate-pulse">
+                        <span className="text-white text-xs">!</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1">
-                    <p className="text-stone-800 font-medium text-sm">{person.name}</p>
+                    <p className="text-stone-800 font-medium text-sm group-hover:text-stone-900 transition-colors">{person.name}</p>
                     <p className="text-xs text-stone-500">
                       {person.daysUntil === 0 ? '🎂 Today!' :
                         person.daysUntil === 1 ? '🎂 Tomorrow!' :
@@ -492,7 +627,7 @@ export const Newsfeed: React.FC<NewsfeedProps> = ({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-rose-500">
+                    <p className="text-sm font-bold text-rose-500 group-hover:text-rose-600 transition-colors">
                       {person.nextBirthday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
