@@ -4,43 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kinfolk</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Preconnect to external domains for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Optimized font loading with display=swap for better performance -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Nunito', 'sans-serif'],
-            },
-            colors: {
-              cream: '#FDFBF7',
-              sage: {
-                50: '#F4F7F4',
-                100: '#E3EBE3',
-                200: '#C5D6C5',
-                500: '#7A9E7A',
-                700: '#4F6F4F',
-              },
-              peach: {
-                50: '#FFF8F5',
-                100: '#FFE8E0',
-                200: '#FFD1C1',
-                500: '#FF9E80',
-              },
-              warm: {
-                50: '#FAF9F6',
-                100: '#F5F2EA',
-                200: '#E6DECE',
-                800: '#5C5446',
-              }
-            }
-          },
-        },
-      }
-    </script>
+
+    <!-- Material Symbols Font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
     <style>
       body {
         background-color: #FDFBF7;
@@ -55,17 +29,6 @@
         scrollbar-width: none;
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
