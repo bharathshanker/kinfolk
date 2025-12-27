@@ -18,6 +18,32 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        // Optimize chunk size
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'supabase-vendor': ['@supabase/supabase-js'],
+            }
+          }
+        },
+        // Target modern browsers for better performance
+        target: 'esnext',
+        // Enable minification
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: true, // Remove console.logs in production
+          }
+        },
+        // Chunk size warnings
+        chunkSizeWarningLimit: 1000,
+      },
+      // CSS code splitting
+      css: {
+        devSourcemap: mode === 'development',
       }
     };
 });
