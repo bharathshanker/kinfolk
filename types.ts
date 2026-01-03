@@ -107,7 +107,10 @@ export interface Person {
   avatarUrl: string;
   themeColor: string; // e.g., "bg-rose-100"
   birthday: string;
-  email?: string; // Optional email for the profile
+  email: string; // Email is now required for collaboration
+  phone: string; // Phone number for better profile matching
+  dateOfBirth: string; // Date of birth for merge key
+  gender?: 'male' | 'female' | 'other'; // Gender for avatar colors and personalization
   linkedUserId?: string; // Optional link to registered app user
   collaborators: string[]; // People who also have access to this profile
   sharingPreference: SharingPreference;
@@ -168,7 +171,10 @@ export interface ProfileSnapshot {
   relation: string;
   avatarUrl: string;
   birthday?: string;
-  email?: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  gender?: 'male' | 'female' | 'other';
 }
 
 // Profile link for bidirectional sync between two profiles

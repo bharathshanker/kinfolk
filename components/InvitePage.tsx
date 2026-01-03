@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ProfileSnapshot } from '../types';
 import { Icon, Button, Modal, Input } from './Shared';
 import { supabase } from '../src/lib/supabase';
+import { generateAvatarUrl } from '../src/utils/avatars';
 
 interface InvitePageProps {
   token: string;
@@ -178,8 +179,8 @@ export const InvitePage: React.FC<InvitePageProps> = ({
 
   if (!inviteDetails) return null;
 
-  const avatarUrl = inviteDetails.personAvatarUrl || 
-    `https://api.dicebear.com/7.x/avataaars/svg?seed=${inviteDetails.personName}`;
+  const avatarUrl = inviteDetails.personAvatarUrl ||
+    generateAvatarUrl(inviteDetails.personName);
 
   // Not logged in - show preview and login prompt
   if (!isLoggedIn) {

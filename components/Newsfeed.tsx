@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Person, TodoItem, HealthRecord, RecordType, CollaborationRequest, ProfileSnapshot } from '../types';
 import { Card, Icon, Avatar, Badge, Button, Modal, Input } from './Shared';
+import { generateAvatarUrl } from '../src/utils/avatars';
 
 interface NewsfeedProps {
   people: Person[];
@@ -18,7 +19,7 @@ const ProfilePreviewCard: React.FC<{
   requesterName: string;
   requesterEmail: string;
 }> = ({ snapshot, personName, requesterName, requesterEmail }) => {
-  const avatarUrl = snapshot?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${personName}`;
+  const avatarUrl = snapshot?.avatarUrl || generateAvatarUrl(personName);
   
   return (
     <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">

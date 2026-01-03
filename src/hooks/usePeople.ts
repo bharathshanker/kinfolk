@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Person, HealthRecord, TodoItem, Note, SharingPreference, SharedFromInfo, ProfileLink, Collaborator, ProfileSnapshot } from '../../types';
 import { Database } from '../types/supabase';
+import { generateAvatarUrl } from '../utils/avatars';
 
 type PersonRow = Database['public']['Tables']['people']['Row'];
 type HealthRow = Database['public']['Tables']['health_records']['Row'];
@@ -378,10 +379,13 @@ export const usePeople = () => {
                     id: p.id,
                     name: p.name,
                     relation: p.relation || '',
-                    avatarUrl: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`,
+                    avatarUrl: p.avatar_url || generateAvatarUrl(p.name, p.gender as 'male' | 'female' | 'other'),
                     themeColor: p.theme_color || 'bg-stone-100',
                     birthday: p.birthday || '',
-                    email: p.email || undefined,
+                    email: p.email || '',
+                    phone: p.phone || '',
+                    dateOfBirth: p.date_of_birth || '',
+                    gender: (p.gender as 'male' | 'female' | 'other') || undefined,
                     linkedUserId: p.linked_user_id || undefined,
                     collaborators,
                     sharingPreference: (p.sharing_preference as SharingPreference) || 'ASK_EVERY_TIME',
@@ -528,7 +532,7 @@ export const usePeople = () => {
     // CRUD Operations
     // ============================================
 
-    const addPerson = async (name: string, relation: string, birthday?: string, file?: File, email?: string) => {
+    const addPerson = async (name: string, relation: string, birthday?: string, file?: File, email?: string, phone?: string, dateOfBirth?: string, gender?: 'male' | 'female' | 'other') => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -556,7 +560,10 @@ export const usePeople = () => {
             relation,
             birthday: birthday || null,
             avatar_url: avatarUrl,
-            email: email || null,
+            email: email || '',
+            phone: phone || '',
+            date_of_birth: dateOfBirth || '',
+            gender: gender || 'other',
             created_by: user.id,
             theme_color: 'bg-stone-100'
         });
@@ -1081,7 +1088,7 @@ export const usePeople = () => {
         const profileSnapshot: ProfileSnapshot = {
             name: person.name,
             relation: person.relation || '',
-            avatarUrl: person.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`,
+            avatarUrl: person.avatar_url || generateAvatarUrl(person.name),
             birthday: person.birthday || undefined,
             email: person.email || undefined
         };
@@ -1134,7 +1141,7 @@ export const usePeople = () => {
         const profileSnapshot: ProfileSnapshot = {
             name: person.name,
             relation: person.relation || '',
-            avatarUrl: person.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`,
+            avatarUrl: person.avatar_url || generateAvatarUrl(person.name),
             birthday: person.birthday || undefined,
             email: person.email || undefined
         };
@@ -1398,6 +1405,50 @@ export const usePeople = () => {
             avatarUrl: (share.profiles as any)?.avatar_url
         }));
     };
+
+    // Auto-create self-profile on first login
+    const createSelfProfileIfNeeded = useCallback(async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Check if user already has a self-profile (linked to their user_id)
+        const { data: existingProfile } = await supabase
+            .from('people')
+            .select('id')
+            .eq('linked_user_id', user.id)
+            .single();
+
+        if (existingProfile) {
+            // Self-profile already exists
+            return;
+        }
+
+        // Create self-profile
+        const fullName = user.user_metadata.full_name || user.email?.split('@')[0] || 'Me';
+        const { error } = await supabase.from('people').insert({
+            name: fullName,
+            relation: 'Self',
+            email: user.email || '',
+            phone: '',
+            date_of_birth: '',
+            gender: 'other',
+            avatar_url: user.user_metadata.avatar_url || null,
+            linked_user_id: user.id,
+            created_by: user.id,
+            theme_color: 'bg-rose-100',
+            sharing_preference: 'ASK_EVERY_TIME'
+        });
+
+        if (!error) {
+            // Refresh people list to show the new self-profile
+            await fetchPeople();
+        }
+    }, [fetchPeople]);
+
+    // Auto-create self-profile on mount
+    useEffect(() => {
+        createSelfProfileIfNeeded();
+    }, [createSelfProfileIfNeeded]);
 
     return {
         people,

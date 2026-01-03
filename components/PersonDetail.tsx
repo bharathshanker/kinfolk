@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Person, RecordType, HealthRecord, TodoItem, Note, FinancialRecord, User, SharingPreference, SharedFromInfo } from '../types';
 import { Avatar, Button, Card, Icon, Badge, Modal, Toggle, Input, TextArea } from './Shared';
+import { generateAvatarUrl } from '../src/utils/avatars';
 
 // Shared By Badge Component
 const SharedByBadge: React.FC<{ sharedFrom: SharedFromInfo }> = ({ sharedFrom }) => {
@@ -1389,7 +1390,7 @@ const ShareSettingsModal: React.FC<{
               id: p.id,
               name: p.name,
               relation: p.relation || '',
-              avatarUrl: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`,
+              avatarUrl: p.avatar_url || generateAvatarUrl(p.name),
               themeColor: p.theme_color || 'bg-stone-100',
               birthday: p.birthday || '',
               email: p.email || undefined,

@@ -12,28 +12,35 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 import { supabase } from './src/lib/supabase';
 import { usePeople } from './src/hooks/usePeople';
 import { Modal } from './components/Shared';
+import { generateAvatarFromEmail } from './src/utils/avatars';
 
 // --- Login Screen ---
 // --- Add Person Modal ---
 const AddPersonModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, relation: string, birthday: string, file?: File, email?: string) => void;
+  onAdd: (name: string, relation: string, birthday: string, file?: File, email?: string, phone?: string, dateOfBirth?: string, gender?: 'male' | 'female' | 'other') => void;
 }> = ({ isOpen, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [relation, setRelation] = useState('');
   const [birthday, setBirthday] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('other');
   const [file, setFile] = useState<File | undefined>(undefined);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && relation) {
-      onAdd(name, relation, birthday, file, email || undefined);
+    if (name && relation && email) {
+      onAdd(name, relation, birthday, file, email, phone, dateOfBirth, gender);
       setName('');
       setRelation('');
       setBirthday('');
       setEmail('');
+      setPhone('');
+      setDateOfBirth('');
+      setGender('other');
       setFile(undefined);
       onClose();
     }
@@ -61,13 +68,28 @@ const AddPersonModal: React.FC<{
             />
           </label>
         </div>
-        <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mom" autoFocus />
-        <Input label="Relation" value={relation} onChange={e => setRelation(e.target.value)} placeholder="e.g. Mother" />
-        <Input label="Birthday (Optional)" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
-        <Input label="Email (Optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+        <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mom" autoFocus required />
+        <Input label="Relation" value={relation} onChange={e => setRelation(e.target.value)} placeholder="e.g. Mother" required />
+        <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" required />
+        <Input label="Phone Number" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 234 567 8900" required />
+        <Input label="Date of Birth" type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} required />
+        <div>
+          <label className="block text-sm font-medium text-stone-700 mb-2">Gender</label>
+          <select
+            value={gender}
+            onChange={e => setGender(e.target.value as 'male' | 'female' | 'other')}
+            className="w-full px-4 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
+            required
+          >
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <Input label="Birthday" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="ghost" onClick={onClose} type="button">Cancel</Button>
-          <Button variant="primary" type="submit" disabled={!name || !relation}>Add Person</Button>
+          <Button variant="primary" type="submit" disabled={!name || !relation || !email || !phone || !dateOfBirth}>Add Person</Button>
         </div>
       </form>
     </Modal>
@@ -96,7 +118,7 @@ const LoginScreen: React.FC = () => {
           options: {
             data: {
               full_name: fullName,
-              avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+              avatar_url: generateAvatarFromEmail(email),
             },
           },
         });
@@ -348,7 +370,7 @@ const AppContent: React.FC = () => {
     id: user.id,
     name: user.user_metadata.full_name || user.email?.split('@')[0] || 'User',
     email: user.email || '',
-    avatarUrl: user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
+    avatarUrl: user.user_metadata.avatar_url || generateAvatarFromEmail(user.email || ''),
   };
 
   return (
