@@ -62,6 +62,9 @@ const EditProfileModal: React.FC<{
   const [relation, setRelation] = useState(person.relation);
   const [birthday, setBirthday] = useState(person.birthday || '');
   const [email, setEmail] = useState(person.email || '');
+  const [phone, setPhone] = useState(person.phone || '');
+  const [dateOfBirth, setDateOfBirth] = useState(person.dateOfBirth || '');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>(person.gender || 'other');
   const [linkSearchEmail, setLinkSearchEmail] = useState('');
   const [linkSearchResults, setLinkSearchResults] = useState<Array<{ id: string; email: string; full_name: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -105,7 +108,10 @@ const EditProfileModal: React.FC<{
       name,
       relation,
       birthday,
-      email: email || undefined
+      email: email || '',
+      phone: phone || '',
+      dateOfBirth: dateOfBirth || '',
+      gender
     });
     onClose();
   };
@@ -142,8 +148,22 @@ const EditProfileModal: React.FC<{
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Name" value={name} onChange={e => setName(e.target.value)} />
         <Input label="Relation" value={relation} onChange={e => setRelation(e.target.value)} />
-        <Input label="Birthday" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
-        <Input label="Email (Optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+        <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+        <Input label="Phone Number" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 234 567 8900" />
+        <Input label="Date of Birth" type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+        <div>
+          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Gender</label>
+          <select
+            value={gender}
+            onChange={e => setGender(e.target.value as 'male' | 'female' | 'other')}
+            className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-800/10 focus:border-stone-400 transition-all"
+          >
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <Input label="Birthday (for reminders)" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
         
         {/* Link to Account Section */}
         <div className="space-y-2">

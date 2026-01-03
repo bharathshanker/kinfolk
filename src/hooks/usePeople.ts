@@ -578,7 +578,10 @@ export const usePeople = () => {
             relation: updatedPerson.relation,
             sharing_preference: updatedPerson.sharingPreference,
             birthday: updatedPerson.birthday === '' ? null : updatedPerson.birthday,
-            email: updatedPerson.email || null
+            email: updatedPerson.email || null,
+            phone: updatedPerson.phone || '',
+            date_of_birth: updatedPerson.dateOfBirth || null,
+            gender: updatedPerson.gender || 'other'
         }).eq('id', updatedPerson.id);
 
         if (error) throw error;
@@ -1088,9 +1091,12 @@ export const usePeople = () => {
         const profileSnapshot: ProfileSnapshot = {
             name: person.name,
             relation: person.relation || '',
-            avatarUrl: person.avatar_url || generateAvatarUrl(person.name),
+            avatarUrl: person.avatar_url || generateAvatarUrl(person.name, person.gender as 'male' | 'female' | 'other'),
             birthday: person.birthday || undefined,
-            email: person.email || undefined
+            email: person.email || '',
+            phone: person.phone || '',
+            dateOfBirth: person.date_of_birth || '',
+            gender: (person.gender as 'male' | 'female' | 'other') || undefined
         };
 
         // Create collaboration request with invite token
@@ -1141,9 +1147,12 @@ export const usePeople = () => {
         const profileSnapshot: ProfileSnapshot = {
             name: person.name,
             relation: person.relation || '',
-            avatarUrl: person.avatar_url || generateAvatarUrl(person.name),
+            avatarUrl: person.avatar_url || generateAvatarUrl(person.name, person.gender as 'male' | 'female' | 'other'),
             birthday: person.birthday || undefined,
-            email: person.email || undefined
+            email: person.email || '',
+            phone: person.phone || '',
+            dateOfBirth: person.date_of_birth || '',
+            gender: (person.gender as 'male' | 'female' | 'other') || undefined
         };
 
         const { error } = await supabase.from('collaboration_requests').insert({
