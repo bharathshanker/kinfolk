@@ -1416,41 +1416,86 @@ export const usePeople = () => {
     };
 
     // Auto-create self-profile on first login
-    const createSelfProfileIfNeeded = useCallback(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+    const createSelfProfileIfNeeded = useCallback(async (): Promise<boolean> => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.log('[Self-Profile] No authenticated user found');
+                return false;
+            }
 
-        // Check if user already has a self-profile (linked to their user_id)
-        const { data: existingProfile } = await supabase
-            .from('people')
-            .select('id')
-            .eq('linked_user_id', user.id)
-            .single();
+            // Check if user already has a self-profile (linked to their user_id AND created by them)
+            const { data: existingLinkedProfile, error: linkedError } = await supabase
+                .from('people')
+                .select('id')
+                .eq('linked_user_id', user.id)
+                .eq('created_by', user.id)
+                .single();
 
-        if (existingProfile) {
-            // Self-profile already exists
-            return;
-        }
+            if (linkedError && linkedError.code !== 'PGRST116') {
+                // PGRST116 = no rows returned, which is expected for new users
+                console.error('[Self-Profile] Error checking for linked profile:', linkedError);
+            }
 
-        // Create self-profile
-        const fullName = user.user_metadata.full_name || user.email?.split('@')[0] || 'Me';
-        const { error } = await supabase.from('people').insert({
-            name: fullName,
-            relation: 'Self',
-            email: user.email || '',
-            phone: '',
-            date_of_birth: '',
-            gender: 'other',
-            avatar_url: user.user_metadata.avatar_url || null,
-            linked_user_id: user.id,
-            created_by: user.id,
-            theme_color: 'bg-rose-100',
-            sharing_preference: 'ASK_EVERY_TIME'
-        });
+            if (existingLinkedProfile) {
+                // Self-profile already exists
+                console.log('[Self-Profile] Already exists:', existingLinkedProfile.id);
+                return true;
+            }
 
-        if (!error) {
-            // Refresh people list to show the new self-profile
+            // Also check if user has a "Self" relation profile that just needs linking
+            const { data: existingSelfRelation } = await supabase
+                .from('people')
+                .select('id')
+                .eq('created_by', user.id)
+                .eq('relation', 'Self')
+                .single();
+
+            if (existingSelfRelation) {
+                // Update existing Self profile to link it to user
+                console.log('[Self-Profile] Found unlinked Self profile, linking:', existingSelfRelation.id);
+                const { error: updateError } = await supabase
+                    .from('people')
+                    .update({ linked_user_id: user.id })
+                    .eq('id', existingSelfRelation.id);
+
+                if (updateError) {
+                    console.error('[Self-Profile] Error linking existing profile:', updateError);
+                    return false;
+                }
+                await fetchPeople();
+                return true;
+            }
+
+            // Create new self-profile
+            const fullName = user.user_metadata.full_name || user.email?.split('@')[0] || 'Me';
+            console.log('[Self-Profile] Creating new self-profile for:', fullName);
+
+            const { error: insertError } = await supabase.from('people').insert({
+                name: fullName,
+                relation: 'Self',
+                email: user.email || '',
+                phone: '',
+                date_of_birth: '',
+                gender: 'other',
+                avatar_url: user.user_metadata.avatar_url || null,
+                linked_user_id: user.id,
+                created_by: user.id,
+                theme_color: 'bg-rose-100',
+                sharing_preference: 'ASK_EVERY_TIME'
+            });
+
+            if (insertError) {
+                console.error('[Self-Profile] Error creating self-profile:', insertError);
+                return false;
+            }
+
+            console.log('[Self-Profile] Successfully created self-profile');
             await fetchPeople();
+            return true;
+        } catch (err) {
+            console.error('[Self-Profile] Unexpected error:', err);
+            return false;
         }
     }, [fetchPeople]);
 
@@ -1497,6 +1542,8 @@ export const usePeople = () => {
         acceptCollaborationRequest,
         declineCollaborationRequest,
         removeCollaborator,
-        getCollaboratorsForPerson
+        getCollaboratorsForPerson,
+        // Self-profile management
+        createSelfProfileIfNeeded
     };
 };
