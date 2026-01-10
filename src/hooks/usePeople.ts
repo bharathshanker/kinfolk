@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Person, HealthRecord, TodoItem, Note, SharingPreference, SharedFromInfo, ProfileLink, Collaborator, ProfileSnapshot } from '../../types';
 import { Database } from '../types/supabase';
@@ -1499,22 +1499,38 @@ export const usePeople = () => {
         }
     }, [fetchPeople]);
 
+    // Track if self-profile creation is in progress to prevent duplicates
+    const selfProfileCreationInProgress = useRef(false);
+
     // Auto-create self-profile when auth state changes (user logs in)
     useEffect(() => {
+        let hasRun = false;
+
+        const runSelfProfileCreation = async () => {
+            // Prevent multiple simultaneous runs
+            if (selfProfileCreationInProgress.current || hasRun) {
+                return;
+            }
+            selfProfileCreationInProgress.current = true;
+            hasRun = true;
+
+            try {
+                await createSelfProfileIfNeeded();
+            } finally {
+                selfProfileCreationInProgress.current = false;
+            }
+        };
+
         // Listen for auth state changes to trigger self-profile creation
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-                if (session?.user) {
-                    // Small delay to ensure session is fully established
-                    setTimeout(() => {
-                        createSelfProfileIfNeeded();
-                    }, 500);
-                }
+            if (event === 'SIGNED_IN' && session?.user) {
+                // Only on actual sign-in, not initial session
+                setTimeout(runSelfProfileCreation, 500);
             }
         });
 
-        // Also try on mount in case session already exists
-        createSelfProfileIfNeeded();
+        // Run once on mount for existing sessions
+        runSelfProfileCreation();
 
         return () => subscription.unsubscribe();
     }, [createSelfProfileIfNeeded]);
