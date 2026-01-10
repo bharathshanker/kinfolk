@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
         minify: 'terser',
         terserOptions: {
           compress: {
-            drop_console: true, // Remove console.logs in production
+            drop_console: ['log'], // Remove console.log but keep console.error/warn
           }
         },
         // Chunk size warnings

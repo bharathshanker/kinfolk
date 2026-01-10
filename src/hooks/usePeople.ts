@@ -1499,9 +1499,24 @@ export const usePeople = () => {
         }
     }, [fetchPeople]);
 
-    // Auto-create self-profile on mount
+    // Auto-create self-profile when auth state changes (user logs in)
     useEffect(() => {
+        // Listen for auth state changes to trigger self-profile creation
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+                if (session?.user) {
+                    // Small delay to ensure session is fully established
+                    setTimeout(() => {
+                        createSelfProfileIfNeeded();
+                    }, 500);
+                }
+            }
+        });
+
+        // Also try on mount in case session already exists
         createSelfProfileIfNeeded();
+
+        return () => subscription.unsubscribe();
     }, [createSelfProfileIfNeeded]);
 
     return {
