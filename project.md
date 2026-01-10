@@ -124,11 +124,21 @@ kinfolk/
 - Add new person button
 
 ### PersonDetail.tsx
-- **5-tab interface**: PROFILE, HEALTH, TODO, FINANCE, NOTE
+- **5-tab interface**: FEED, HEALTH, TODO, FINANCE, NOTE
+- **Feed tab** (default): Quick stats dashboard + activity timeline
+  - StatCard components showing counts for todos, health, notes, finance
+  - Clickable cards navigate to respective tabs
+  - ActivityFeedItem components showing recent activity across all types
+  - Relative time formatting (e.g., "2h ago", "3d ago")
 - Full CRUD for all record types
 - Edit profile modal with avatar upload
 - Sharing and collaborator management
 - Real-time updates via subscriptions
+
+#### Feed View Helper Functions
+- `getStats(person)` - Calculates summary stats (pending todos, health count, finance totals)
+- `getActivityFeed(person)` - Aggregates and sorts recent items from all record types
+- `formatRelativeTime(date)` - Formats dates as relative time strings
 
 ### ChatBot.tsx
 - Floating AI assistant interface
@@ -366,4 +376,4 @@ npx prettier --write .
 
 ---
 
-*Last updated: January 2025*
+*Last updated: January 10, 2025*
