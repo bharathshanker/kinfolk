@@ -18,6 +18,169 @@ const SharedByBadge: React.FC<{ sharedFrom: SharedFromInfo }> = ({ sharedFrom })
   );
 };
 
+// --- Feed/Summary View Types and Helpers ---
+
+interface ActivityItem {
+  type: 'todo' | 'health' | 'note' | 'finance';
+  title: string;
+  date: string;
+  icon: string;
+  iconColor: string;
+  bgColor: string;
+  status?: string;
+  amount?: number;
+}
+
+// Format relative time (e.g., "2 hours ago", "3 days ago")
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// Get activity feed from all records
+const getActivityFeed = (person: Person): ActivityItem[] => {
+  const activities: ActivityItem[] = [];
+
+  person.todos.forEach(t => activities.push({
+    type: 'todo',
+    title: t.title,
+    date: t.dueDate,
+    icon: t.isCompleted ? 'task_alt' : 'radio_button_unchecked',
+    iconColor: t.isCompleted ? 'text-green-600' : 'text-amber-600',
+    bgColor: t.isCompleted ? 'bg-green-50' : 'bg-amber-50',
+    status: t.isCompleted ? 'Completed' : `Due ${formatRelativeTime(t.dueDate)}`
+  }));
+
+  person.health.forEach(h => activities.push({
+    type: 'health',
+    title: h.title,
+    date: h.date,
+    icon: 'monitor_heart',
+    iconColor: 'text-rose-600',
+    bgColor: 'bg-rose-50',
+    status: h.type.charAt(0) + h.type.slice(1).toLowerCase()
+  }));
+
+  person.notes.forEach(n => activities.push({
+    type: 'note',
+    title: n.title,
+    date: n.meta.updatedAt ? new Date(n.meta.updatedAt).toISOString() : new Date().toISOString(),
+    icon: 'edit_note',
+    iconColor: 'text-blue-600',
+    bgColor: 'bg-blue-50'
+  }));
+
+  person.financial.forEach(f => activities.push({
+    type: 'finance',
+    title: f.title,
+    date: f.date,
+    icon: 'account_balance_wallet',
+    iconColor: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    status: f.type.charAt(0) + f.type.slice(1).toLowerCase(),
+    amount: f.amount
+  }));
+
+  return activities
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 15);
+};
+
+// Calculate quick stats
+const getStats = (person: Person) => {
+  const pendingTodos = person.todos.filter(t => !t.isCompleted);
+  const sortedPendingTodos = [...pendingTodos].sort((a, b) =>
+    new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  );
+  const sortedHealth = [...person.health].sort((a, b) =>
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  return {
+    todos: {
+      pending: pendingTodos.length,
+      total: person.todos.length,
+      nextDue: sortedPendingTodos[0]?.dueDate
+    },
+    health: {
+      count: person.health.length,
+      lastVisit: sortedHealth[0]?.date
+    },
+    notes: {
+      count: person.notes.length
+    },
+    finance: {
+      total: person.financial.reduce((sum, f) => sum + f.amount, 0),
+      owed: person.financial.filter(f => f.type === 'OWED').reduce((sum, f) => sum + f.amount, 0),
+      lent: person.financial.filter(f => f.type === 'LENT').reduce((sum, f) => sum + f.amount, 0)
+    }
+  };
+};
+
+// Stat Card Component
+const StatCard: React.FC<{
+  icon: string;
+  iconColor: string;
+  bgColor: string;
+  title: string;
+  value: string;
+  subtitle?: string;
+  onClick?: () => void;
+}> = ({ icon, iconColor, bgColor, title, value, subtitle, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`${bgColor} p-4 rounded-2xl text-left transition-all hover:scale-[1.02] hover:shadow-md w-full`}
+  >
+    <div className="flex items-start justify-between mb-2">
+      <div className={`w-10 h-10 rounded-xl ${bgColor} border border-white/50 flex items-center justify-center`}>
+        <Icon name={icon} className={`text-xl ${iconColor}`} />
+      </div>
+    </div>
+    <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">{title}</p>
+    <p className={`text-2xl font-bold ${iconColor.replace('text-', 'text-').replace('-600', '-800')}`}>{value}</p>
+    {subtitle && <p className="text-xs text-stone-500 mt-1">{subtitle}</p>}
+  </button>
+);
+
+// Activity Feed Item Component
+const ActivityFeedItem: React.FC<{ item: ActivityItem }> = ({ item }) => (
+  <div className="flex items-center gap-3 py-3 border-b border-stone-100 last:border-0">
+    <div className={`w-9 h-9 rounded-xl ${item.bgColor} flex items-center justify-center flex-shrink-0`}>
+      <Icon name={item.icon} className={`text-lg ${item.iconColor}`} />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium text-stone-800 truncate">{item.title}</p>
+      <div className="flex items-center gap-2 text-xs text-stone-500">
+        <span className="capitalize">{item.type}</span>
+        {item.status && (
+          <>
+            <span className="text-stone-300">•</span>
+            <span>{item.status}</span>
+          </>
+        )}
+        {item.amount !== undefined && (
+          <>
+            <span className="text-stone-300">•</span>
+            <span className="font-medium">${item.amount.toLocaleString()}</span>
+          </>
+        )}
+      </div>
+    </div>
+    <span className="text-xs text-stone-400 flex-shrink-0">{formatRelativeTime(item.date)}</span>
+  </div>
+);
+
 interface PersonDetailProps {
   person: Person;
   currentUser: User | null;
@@ -872,7 +1035,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
   const [editingFinance, setEditingFinance] = useState<FinancialRecord | null>(null);
 
   const tabs = [
-    { id: RecordType.PROFILE, label: 'Profile', icon: 'face' },
+    { id: RecordType.PROFILE, label: 'Feed', icon: 'dashboard' },
     { id: RecordType.HEALTH, label: 'Health', icon: 'monitor_heart' },
     { id: RecordType.TODO, label: 'Todos', icon: 'check_circle' },
     { id: RecordType.FINANCE, label: 'Finance', icon: 'account_balance_wallet' },
@@ -979,61 +1142,91 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
 
         {/* Content Area */}
         <div className="mt-8">
-          {activeTab === RecordType.PROFILE && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="p-6">
-                <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-4">Basic Info</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between py-2 border-b border-stone-100">
-                    <span className="text-stone-500">Relation</span>
-                    <span className="font-medium text-stone-800">{person.relation}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-stone-100">
-                    <span className="text-stone-500">Birthday</span>
-                    <span className="font-medium text-stone-800">{person.birthday || 'Not set'}</span>
-                  </div>
+          {activeTab === RecordType.PROFILE && (() => {
+            const stats = getStats(person);
+            const activities = getActivityFeed(person);
+            return (
+              <div className="space-y-6">
+                {/* Quick Stats Dashboard */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatCard
+                    icon="check_circle"
+                    iconColor="text-amber-600"
+                    bgColor="bg-amber-50"
+                    title="Todos"
+                    value={stats.todos.pending > 0 ? `${stats.todos.pending}` : '0'}
+                    subtitle={stats.todos.nextDue ? `Next: ${formatRelativeTime(stats.todos.nextDue)}` : stats.todos.total > 0 ? 'All done!' : 'No tasks yet'}
+                    onClick={() => setActiveTab(RecordType.TODO)}
+                  />
+                  <StatCard
+                    icon="monitor_heart"
+                    iconColor="text-rose-600"
+                    bgColor="bg-rose-50"
+                    title="Health"
+                    value={`${stats.health.count}`}
+                    subtitle={stats.health.lastVisit ? `Last: ${formatRelativeTime(stats.health.lastVisit)}` : 'No records yet'}
+                    onClick={() => setActiveTab(RecordType.HEALTH)}
+                  />
+                  <StatCard
+                    icon="edit_note"
+                    iconColor="text-blue-600"
+                    bgColor="bg-blue-50"
+                    title="Notes"
+                    value={`${stats.notes.count}`}
+                    subtitle={stats.notes.count === 1 ? '1 note' : `${stats.notes.count} notes`}
+                    onClick={() => setActiveTab(RecordType.NOTE)}
+                  />
+                  <StatCard
+                    icon="account_balance_wallet"
+                    iconColor="text-emerald-600"
+                    bgColor="bg-emerald-50"
+                    title="Finance"
+                    value={stats.finance.total > 0 ? `$${stats.finance.total.toLocaleString()}` : '$0'}
+                    subtitle={stats.finance.owed > 0 ? `Owed: $${stats.finance.owed}` : stats.finance.lent > 0 ? `Lent: $${stats.finance.lent}` : 'No transactions'}
+                    onClick={() => setActiveTab(RecordType.FINANCE)}
+                  />
                 </div>
-              </Card>
 
-              <Card className="p-6 bg-indigo-50 border-indigo-100">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Shared With</h3>
-                  <button onClick={() => setShowShareModal(true)} className="text-indigo-600 text-sm font-medium hover:underline">
-                    Manage
-                  </button>
-                </div>
+                {/* Activity Timeline */}
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider">Recent Activity</h3>
+                    {person.collaborators.length > 0 && (
+                      <button
+                        onClick={() => setShowShareModal(true)}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 hover:underline"
+                      >
+                        <div className="flex -space-x-1">
+                          {person.collaborators.slice(0, 3).map((c, i) => (
+                            <div key={i} className="w-5 h-5 rounded-full bg-indigo-200 border border-white flex items-center justify-center text-[10px] font-bold text-indigo-700">
+                              {c[0]}
+                            </div>
+                          ))}
+                        </div>
+                        <span>{person.collaborators.length} collaborator{person.collaborators.length !== 1 ? 's' : ''}</span>
+                      </button>
+                    )}
+                  </div>
 
-                <div className="flex -space-x-2 mb-4">
-                  {person.collaborators.length > 0 ? (
-                    person.collaborators.map((c, i) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-indigo-200 border-2 border-white flex items-center justify-center text-xs font-bold text-indigo-700" title={c}>
-                        {c[0]}
-                      </div>
-                    ))
+                  {activities.length > 0 ? (
+                    <div className="divide-y divide-stone-100">
+                      {activities.map((item, idx) => (
+                        <ActivityFeedItem key={idx} item={item} />
+                      ))}
+                    </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full border-2 border-dashed border-indigo-300 flex items-center justify-center text-indigo-400">
-                      <Icon name="add" className="text-sm" />
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
+                        <Icon name="history" className="text-3xl text-stone-400" />
+                      </div>
+                      <p className="text-stone-500 mb-2">No activity yet</p>
+                      <p className="text-sm text-stone-400">Add todos, health records, notes, or finances to see them here</p>
                     </div>
                   )}
-                </div>
-
-                <p className="text-sm text-indigo-800 mb-4">
-                  {person.collaborators.length > 0
-                    ? `Shared with ${person.collaborators.length} others.`
-                    : 'This profile is private to you.'}
-                </p>
-
-                <div className="flex items-center gap-2 text-indigo-600 text-sm">
-                  <Icon name={person.sharingPreference === 'ALWAYS_SHARE' ? 'visibility' : 'visibility_off'} />
-                  <span>
-                    {person.sharingPreference === 'ALWAYS_SHARE'
-                      ? 'Always share updates'
-                      : 'Ask before sharing is ON'}
-                  </span>
-                </div>
-              </Card>
-            </div>
-          )}
+                </Card>
+              </div>
+            );
+          })()}
 
           {activeTab === RecordType.HEALTH && (
             <div className="space-y-4">
