@@ -1118,6 +1118,14 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
               <button onClick={() => setShowEditProfileModal(true)} className="text-stone-400 hover:text-stone-600">
                 <Icon name="edit" className="text-xl" />
               </button>
+              <button onClick={() => setShowShareModal(true)} className="text-stone-400 hover:text-indigo-600 relative">
+                <Icon name="group" className="text-xl" />
+                {person.collaborators.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {person.collaborators.length}
+                  </span>
+                )}
+              </button>
             </div>
             <p className="text-stone-500 text-lg">{person.relation}</p>
           </div>
