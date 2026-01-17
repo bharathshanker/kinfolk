@@ -14,7 +14,6 @@ import { usePeople } from './src/hooks/usePeople';
 import { Modal } from './components/Shared';
 import { generateAvatarFromEmail } from './src/utils/avatars';
 
-// --- Login Screen ---
 // --- Add Person Modal ---
 const AddPersonModal: React.FC<{
   isOpen: boolean;
@@ -50,11 +49,11 @@ const AddPersonModal: React.FC<{
     <Modal isOpen={isOpen} onClose={onClose} title="Add New Person">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex justify-center mb-4">
-          <label className="relative w-24 h-24 rounded-full bg-stone-100 flex items-center justify-center cursor-pointer border-2 border-dashed border-stone-300 hover:border-stone-400 transition-colors overflow-hidden">
+          <label className="relative w-24 h-24 rounded-full bg-gradient-to-br from-turmeric-100 to-turmeric-200 flex items-center justify-center cursor-pointer border-3 border-dashed border-turmeric-300 hover:border-turmeric-400 transition-colors overflow-hidden shadow-warm">
             {file ? (
               <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
             ) : (
-              <Icon name="add_a_photo" className="text-stone-400 text-2xl" />
+              <Icon name="add_a_photo" className="text-turmeric-500 text-2xl" />
             )}
             <input
               type="file"
@@ -74,11 +73,11 @@ const AddPersonModal: React.FC<{
         <Input label="Phone Number" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 234 567 8900" required />
         <Input label="Date of Birth" type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} required />
         <div>
-          <label className="block text-sm font-medium text-stone-700 mb-2">Gender</label>
+          <label className="block text-xs font-bold text-brown-500 uppercase tracking-wider mb-2">Gender</label>
           <select
             value={gender}
             onChange={e => setGender(e.target.value as 'male' | 'female' | 'other')}
-            className="w-full px-4 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
+            className="w-full px-4 py-3 bg-cream border-2 border-brown-100 rounded-2xl focus:outline-none focus:border-turmeric-400 focus:ring-4 focus:ring-turmeric-100 transition-all text-brown-800"
             required
           >
             <option value="male">Male</option>
@@ -87,7 +86,7 @@ const AddPersonModal: React.FC<{
           </select>
         </div>
         <Input label="Birthday" type="date" value={birthday} onChange={e => setBirthday(e.target.value)} />
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex justify-end gap-3 pt-4">
           <Button variant="ghost" onClick={onClose} type="button">Cancel</Button>
           <Button variant="primary" type="submit" disabled={!name || !relation || !email || !phone || !dateOfBirth}>Add Person</Button>
         </div>
@@ -136,6 +135,7 @@ const LoginScreen: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
@@ -153,13 +153,20 @@ const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-cream p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 border border-stone-100 text-center animate-fade-in-up">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-rose-100 mb-6 text-rose-500">
-          <Icon name="spa" className="text-4xl" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-warm p-4">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-turmeric-200/30 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-32 right-20 w-40 h-40 bg-plum-200/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-coral-200/25 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="w-full max-w-md bg-white rounded-4xl shadow-warm-xl p-8 border border-turmeric-100 text-center animate-fade-in-up relative z-10">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-turmeric-400 to-coral-400 mb-6 shadow-glow-turmeric animate-float">
+          <Icon name="diversity_3" className="text-4xl text-white" />
         </div>
-        <h1 className="text-3xl font-bold text-stone-800 mb-2">Welcome to Kinfolk</h1>
-        <p className="text-stone-500 mb-8">{isSignUp ? 'Create your family circle' : 'Sign in to your circle'}</p>
+        <h1 className="text-3xl font-bold text-brown-800 mb-2 heading-display">Welcome to Kinfolk</h1>
+        <p className="text-brown-500 mb-8">{isSignUp ? 'Create your family circle' : 'Sign in to your circle'}</p>
 
         <form onSubmit={handleAuth} className="space-y-4 text-left">
           {isSignUp && (
@@ -188,9 +195,9 @@ const LoginScreen: React.FC = () => {
             required
           />
 
-          {error && <div className="p-3 bg-red-50 text-red-500 text-sm rounded-xl">{error}</div>}
+          {error && <div className="p-3 bg-coral-50 text-coral-700 text-sm rounded-2xl border border-coral-200">{error}</div>}
 
-          <Button variant="primary" type="submit" className="w-full justify-center py-3 text-lg" disabled={loading}>
+          <Button variant="primary" type="submit" className="w-full justify-center py-3.5 text-lg" disabled={loading}>
             {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
           </Button>
         </form>
@@ -198,28 +205,28 @@ const LoginScreen: React.FC = () => {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-stone-200"></div>
+              <div className="w-full border-t border-brown-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-stone-500">Or continue with</span>
+              <span className="px-3 bg-white text-brown-500">Or continue with</span>
             </div>
           </div>
 
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="mt-6 w-full flex items-center justify-center gap-3 px-4 py-3 border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-6 w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-white border-2 border-brown-200 rounded-2xl hover:bg-brown-50 hover:border-brown-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-warm hover:shadow-warm-md"
           >
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
-            <span className="font-medium text-stone-700">Google</span>
+            <span className="font-semibold text-brown-700">Google</span>
           </button>
         </div>
 
-        <div className="mt-8 text-sm text-stone-500">
+        <div className="mt-8 text-sm text-brown-500">
           {isSignUp ? 'Already have an account?' : "Don't have an account?"}
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="ml-2 font-bold text-rose-500 hover:text-rose-600"
+            className="ml-2 font-bold text-turmeric-600 hover:text-turmeric-700 transition-colors"
           >
             {isSignUp ? 'Sign In' : 'Sign Up'}
           </button>
@@ -229,7 +236,6 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-// --- Main App ---
 // --- Main App ---
 const AppContent: React.FC = () => {
   const { user, signOut, loading: authLoading } = useAuth();
@@ -277,19 +283,17 @@ const AppContent: React.FC = () => {
     if (match) {
       setInviteToken(match[1]);
     }
-    
-    // Handle popstate (back/forward navigation)
+
     const handlePopState = () => {
       const newPath = window.location.pathname;
       const newMatch = newPath.match(/^\/invite\/([a-zA-Z0-9]+)$/);
       setInviteToken(newMatch ? newMatch[1] : null);
     };
-    
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Check for pending invite after login
   useEffect(() => {
     const pendingToken = sessionStorage.getItem('pendingInviteToken');
     if (pendingToken && user) {
@@ -298,7 +302,6 @@ const AppContent: React.FC = () => {
     }
   }, [user]);
 
-  // Fetch pending collaboration requests
   const refreshCollaborationRequests = React.useCallback(async () => {
     if (user && fetchPendingCollaborationRequests) {
       const requests = await fetchPendingCollaborationRequests();
@@ -324,26 +327,31 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Handle closing invite page and redirecting to dashboard
   const handleCloseInvite = () => {
     setInviteToken(null);
     window.history.pushState({}, '', '/');
   };
 
-  // Handler for selecting a person with optional tab
   const handleSelectPerson = (personId: string, tab?: RecordType) => {
     setActivePersonId(personId);
     setActiveTab(tab || RecordType.PROFILE);
   };
 
-  // Derive the active person object
   const activePerson = people.find(p => p.id === activePersonId);
 
   if (authLoading || peopleLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-cream"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-warm">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-turmeric-400 to-coral-400 flex items-center justify-center shadow-glow-turmeric animate-pulse">
+            <Icon name="diversity_3" className="text-3xl text-white" />
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-turmeric-500"></div>
+        </div>
+      </div>
+    );
   }
 
-  // Show invite page if there's an invite token
   if (inviteToken) {
     return (
       <InvitePage
@@ -353,9 +361,7 @@ const AppContent: React.FC = () => {
         people={people.map(p => ({ id: p.id, name: p.name, relation: p.relation }))}
         isLoggedIn={!!user}
         onLogin={() => {
-          // Store the invite token in sessionStorage so it persists after login
           sessionStorage.setItem('pendingInviteToken', inviteToken);
-          // Redirect to login (will be handled by LoginScreen)
         }}
       />
     );
@@ -365,7 +371,6 @@ const AppContent: React.FC = () => {
     return <LoginScreen />;
   }
 
-  // Map Supabase user to AppUser format for display
   const currentUser: AppUser = {
     id: user.id,
     name: user.user_metadata.full_name || user.email?.split('@')[0] || 'User',
@@ -374,18 +379,20 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream font-sans text-stone-800 selection:bg-rose-200">
+    <div className="min-h-screen bg-gradient-warm font-sans text-brown-800 selection:bg-turmeric-200">
 
       {/* Top Mobile Bar */}
       {!activePersonId && (
-        <div className="md:hidden p-4 flex justify-between items-center bg-white/80 backdrop-blur sticky top-0 z-10 border-b border-stone-100">
-          <span className="font-extrabold text-xl tracking-tight text-stone-800 flex items-center gap-1">
-            <Icon name="spa" className="text-rose-400" />
+        <div className="md:hidden p-4 flex justify-between items-center glass sticky top-0 z-10 border-b border-turmeric-100">
+          <span className="font-extrabold text-xl tracking-tight text-brown-800 flex items-center gap-2 heading-display">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-turmeric-400 to-coral-400 flex items-center justify-center shadow-warm">
+              <Icon name="diversity_3" className="text-white text-lg" />
+            </div>
             Kinfolk
           </span>
           <div className="flex gap-2">
-            <button onClick={() => signOut()} className="p-2 text-stone-400">
-              <Avatar src={currentUser.avatarUrl} alt="User" size="w-8 h-8" />
+            <button onClick={() => signOut()} className="p-1">
+              <Avatar src={currentUser.avatarUrl} alt="User" size="w-9 h-9" glowOnHover />
             </button>
           </div>
         </div>
@@ -395,47 +402,49 @@ const AppContent: React.FC = () => {
       <div className="flex h-screen overflow-hidden">
 
         {/* Desktop Sidebar */}
-        <nav className="hidden md:flex w-64 flex-col bg-white border-r border-stone-100 p-6 h-full z-20">
-          <div className="mb-8 flex items-center gap-2 px-2">
-            <Icon name="spa" className="text-rose-400 text-3xl" />
-            <span className="font-extrabold text-2xl tracking-tight text-stone-800">Kinfolk</span>
+        <nav className="hidden md:flex w-72 flex-col bg-white/80 backdrop-blur-md border-r border-turmeric-100 p-6 h-full z-20">
+          <div className="mb-8 flex items-center gap-3 px-2">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-turmeric-400 to-coral-400 flex items-center justify-center shadow-warm">
+              <Icon name="diversity_3" className="text-white text-xl" />
+            </div>
+            <span className="font-extrabold text-2xl tracking-tight text-brown-800 heading-display">Kinfolk</span>
           </div>
 
-          <div className="mb-6 p-3 bg-stone-50 rounded-xl flex items-center gap-3 border border-stone-100">
-            <Avatar src={currentUser.avatarUrl} alt={currentUser.name} />
-            <div className="overflow-hidden">
-              <p className="text-xs text-stone-400 font-bold uppercase">Logged in as</p>
-              <p className="font-bold text-stone-800 truncate">{currentUser.name}</p>
+          <div className="mb-6 p-4 bg-gradient-to-r from-turmeric-50 to-coral-50 rounded-2xl flex items-center gap-3 border border-turmeric-100 shadow-warm">
+            <Avatar src={currentUser.avatarUrl} alt={currentUser.name} glowOnHover />
+            <div className="overflow-hidden flex-1">
+              <p className="text-xs text-brown-400 font-bold uppercase tracking-wider">Logged in as</p>
+              <p className="font-bold text-brown-800 truncate">{currentUser.name}</p>
             </div>
-            <button onClick={() => signOut()} className="ml-auto text-stone-400 hover:text-stone-600">
+            <button onClick={() => signOut()} className="text-brown-400 hover:text-coral-500 transition-colors p-2 hover:bg-coral-50 rounded-xl">
               <Icon name="logout" className="text-lg" />
             </button>
           </div>
 
-          <div className="space-y-1 flex-1">
+          <div className="space-y-1 flex-1 overflow-y-auto">
             <button
               onClick={() => setActivePersonId(null)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${!activePersonId ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:bg-stone-50'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-semibold ${!activePersonId ? 'bg-gradient-to-r from-turmeric-100 to-coral-100 text-brown-800 shadow-warm' : 'text-brown-500 hover:bg-brown-50'}`}
             >
-              <Icon name="dashboard" />
+              <Icon name="dashboard" className={!activePersonId ? 'text-turmeric-600' : ''} />
               Dashboard
             </button>
-            <div className="pt-4 pb-2 px-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Your Circle</div>
+            <div className="pt-5 pb-2 px-4 text-xs font-bold text-brown-400 uppercase tracking-wider">Your Circle</div>
             {people.map(p => (
               <button
                 key={p.id}
                 onClick={() => setActivePersonId(p.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl transition-all font-medium ${activePersonId === p.id ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:bg-stone-50'}`}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all font-medium ${activePersonId === p.id ? 'bg-gradient-to-r from-turmeric-100 to-coral-100 text-brown-800 shadow-warm' : 'text-brown-500 hover:bg-brown-50'}`}
               >
-                <img src={p.avatarUrl} className="w-6 h-6 rounded-full object-cover" />
+                <img src={p.avatarUrl} className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-warm" />
                 {p.name}
               </button>
             ))}
             <button
               onClick={() => setShowAddPersonModal(true)}
-              className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-stone-400 hover:text-stone-600 hover:bg-stone-50 transition-all font-medium border border-dashed border-stone-200 mt-2"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-brown-400 hover:text-turmeric-600 hover:bg-turmeric-50 transition-all font-medium border-2 border-dashed border-brown-200 hover:border-turmeric-300 mt-3"
             >
-              <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-brown-100 flex items-center justify-center group-hover:bg-turmeric-100">
                 <Icon name="add" className="text-sm" />
               </div>
               Add Person
@@ -444,9 +453,9 @@ const AppContent: React.FC = () => {
 
           <button
             onClick={() => setIsChatOpen(true)}
-            className="mt-auto flex items-center justify-center gap-2 bg-gradient-to-r from-stone-800 to-stone-700 text-white p-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all group"
+            className="mt-auto flex items-center justify-center gap-2 bg-gradient-to-r from-plum-500 to-plum-600 text-white p-4 rounded-2xl shadow-warm hover:shadow-glow-plum hover:-translate-y-0.5 transition-all group"
           >
-            <Icon name="network_intelligence" className="group-hover:animate-pulse" />
+            <Icon name="auto_awesome" className="group-hover:animate-wiggle" />
             <span className="font-bold">Ask Kinfolk AI</span>
           </button>
         </nav>
@@ -491,6 +500,7 @@ const AppContent: React.FC = () => {
                 pendingCollaborationRequests={pendingCollaborationRequests}
                 onAcceptCollaborationRequest={handleAcceptCollaborationRequest}
                 onDeclineCollaborationRequest={handleDeclineCollaborationRequest}
+                currentUserName={currentUser.name}
               />
             )}
           </div>
@@ -512,9 +522,9 @@ const AppContent: React.FC = () => {
       {!isChatOpen && (
         <button
           onClick={() => setIsChatOpen(true)}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-stone-800 text-white rounded-full shadow-2xl flex items-center justify-center z-40 active:scale-95 transition-transform"
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-plum-500 to-plum-600 text-white rounded-2xl shadow-glow-plum flex items-center justify-center z-40 active:scale-95 transition-transform hover:-translate-y-1"
         >
-          <Icon name="network_intelligence" className="text-2xl" />
+          <Icon name="auto_awesome" className="text-2xl" />
         </button>
       )}
 

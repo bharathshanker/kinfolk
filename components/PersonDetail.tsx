@@ -147,37 +147,37 @@ const StatCard: React.FC<{
         <Icon name={icon} className={`text-xl ${iconColor}`} />
       </div>
     </div>
-    <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">{title}</p>
+    <p className="text-xs font-medium text-brown-500 uppercase tracking-wider">{title}</p>
     <p className={`text-2xl font-bold ${iconColor.replace('text-', 'text-').replace('-600', '-800')}`}>{value}</p>
-    {subtitle && <p className="text-xs text-stone-500 mt-1">{subtitle}</p>}
+    {subtitle && <p className="text-xs text-brown-500 mt-1">{subtitle}</p>}
   </button>
 );
 
 // Activity Feed Item Component
 const ActivityFeedItem: React.FC<{ item: ActivityItem }> = ({ item }) => (
-  <div className="flex items-center gap-3 py-3 border-b border-stone-100 last:border-0">
+  <div className="flex items-center gap-3 py-3 border-b border-brown-100 last:border-0">
     <div className={`w-9 h-9 rounded-xl ${item.bgColor} flex items-center justify-center flex-shrink-0`}>
       <Icon name={item.icon} className={`text-lg ${item.iconColor}`} />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-stone-800 truncate">{item.title}</p>
-      <div className="flex items-center gap-2 text-xs text-stone-500">
+      <p className="text-sm font-medium text-brown-800 truncate">{item.title}</p>
+      <div className="flex items-center gap-2 text-xs text-brown-500">
         <span className="capitalize">{item.type}</span>
         {item.status && (
           <>
-            <span className="text-stone-300">•</span>
+            <span className="text-brown-300">•</span>
             <span>{item.status}</span>
           </>
         )}
         {item.amount !== undefined && (
           <>
-            <span className="text-stone-300">•</span>
+            <span className="text-brown-300">•</span>
             <span className="font-medium">${item.amount.toLocaleString()}</span>
           </>
         )}
       </div>
     </div>
-    <span className="text-xs text-stone-400 flex-shrink-0">{formatRelativeTime(item.date)}</span>
+    <span className="text-xs text-brown-400 flex-shrink-0">{formatRelativeTime(item.date)}</span>
   </div>
 );
 
@@ -295,7 +295,7 @@ const EditProfileModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowDeleteConfirm(false)} title="Delete Person">
         <div className="space-y-4">
-          <p className="text-stone-600">Are you sure you want to delete <strong>{person.name}</strong>? This will also delete all their health records, todos, notes, and financial records.</p>
+          <p className="text-brown-600">Are you sure you want to delete <strong>{person.name}</strong>? This will also delete all their health records, todos, notes, and financial records.</p>
           <p className="text-red-500 text-sm font-medium">This action cannot be undone.</p>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
@@ -315,11 +315,11 @@ const EditProfileModal: React.FC<{
         <Input label="Phone Number" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 234 567 8900" />
         <Input label="Date of Birth" type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
         <div>
-          <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Gender</label>
+          <label className="block text-xs font-bold text-brown-500 uppercase tracking-wider mb-1.5">Gender</label>
           <select
             value={gender}
             onChange={e => setGender(e.target.value as 'male' | 'female' | 'other')}
-            className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-800/10 focus:border-stone-400 transition-all"
+            className="w-full bg-brown-50 border border-brown-200 rounded-xl px-4 py-2.5 text-brown-800 focus:outline-none focus:ring-2 focus:ring-brown-800/10 focus:border-brown-400 transition-all"
           >
             <option value="male">Male</option>
             <option value="female">Female</option>
@@ -330,7 +330,7 @@ const EditProfileModal: React.FC<{
         
         {/* Link to Account Section */}
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Link to Account</label>
+          <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Link to Account</label>
           {person.linkedUserId ? (
             <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
               <Icon name="check_circle" className="inline mr-2" />
@@ -345,23 +345,23 @@ const EditProfileModal: React.FC<{
                 type="email"
               />
               {isSearching && (
-                <div className="text-xs text-stone-400">Searching...</div>
+                <div className="text-xs text-brown-400">Searching...</div>
               )}
               {linkSearchResults.length > 0 && (
-                <div className="border border-stone-200 rounded-xl overflow-hidden">
+                <div className="border border-brown-200 rounded-xl overflow-hidden">
                   {linkSearchResults.map(user => (
                     <button
                       key={user.id}
                       type="button"
                       onClick={() => handleLinkToUser(user.id)}
-                      className="w-full p-3 text-left hover:bg-stone-50 border-b border-stone-100 last:border-b-0 flex items-center gap-3"
+                      className="w-full p-3 text-left hover:bg-brown-50 border-b border-brown-100 last:border-b-0 flex items-center gap-3"
                     >
                       <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
                         {(user.full_name || user.email || 'U')[0].toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-stone-800">{user.full_name || 'No name'}</p>
-                        <p className="text-xs text-stone-500">{user.email}</p>
+                        <p className="text-sm font-medium text-brown-800">{user.full_name || 'No name'}</p>
+                        <p className="text-xs text-brown-500">{user.email}</p>
                       </div>
                     </button>
                   ))}
@@ -451,7 +451,7 @@ const EditTodoModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowDeleteConfirm(false)} title="Delete Task">
         <div className="space-y-4">
-          <p className="text-stone-600">Are you sure you want to delete this task?</p>
+          <p className="text-brown-600">Are you sure you want to delete this task?</p>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
             <Button variant="danger" onClick={() => { onDelete(); onClose(); }}>Delete</Button>
@@ -467,11 +467,11 @@ const EditTodoModal: React.FC<{
         <Input label="Title" value={title} onChange={e => setTitle(e.target.value)} />
         <Input label="Due Date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
         <div>
-          <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Priority</label>
+          <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Priority</label>
           <select
             value={priority}
             onChange={e => setPriority(e.target.value as 'LOW' | 'MEDIUM' | 'HIGH')}
-            className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+            className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
           >
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
@@ -480,7 +480,7 @@ const EditTodoModal: React.FC<{
         </div>
         <TextArea label="Description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Add more details..." />
         
-        <div className="pt-4 border-t border-stone-100">
+        <div className="pt-4 border-t border-brown-100">
           <Toggle
             checked={share}
             onChange={setShare}
@@ -488,7 +488,7 @@ const EditTodoModal: React.FC<{
           />
           {share && acceptedCollaborators.length > 0 && (
             <div className="mt-3 pl-[52px]">
-              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <p className="text-xs font-bold text-brown-500 uppercase mb-2">Select Collaborators</p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {acceptedCollaborators.map(collab => (
                   <label
@@ -496,7 +496,7 @@ const EditTodoModal: React.FC<{
                     className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
                       selectedCollaboratorIds.includes(collab.id)
                         ? 'bg-indigo-100 border-2 border-indigo-300'
-                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                        : 'bg-brown-50 border border-brown-200 hover:border-indigo-200'
                     }`}
                   >
                     <input
@@ -509,8 +509,8 @@ const EditTodoModal: React.FC<{
                       {collab.name[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
-                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                      <p className="text-sm font-medium text-brown-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-brown-500">{collab.email}</p>}
                     </div>
                   </label>
                 ))}
@@ -518,7 +518,7 @@ const EditTodoModal: React.FC<{
             </div>
           )}
           {share && acceptedCollaborators.length === 0 && (
-            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+            <p className="text-xs text-brown-400 mt-2 pl-[52px]">
               No accepted collaborators yet.
             </p>
           )}
@@ -604,7 +604,7 @@ const EditHealthModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowDeleteConfirm(false)} title="Delete Health Record">
         <div className="space-y-4">
-          <p className="text-stone-600">Are you sure you want to delete this health record?</p>
+          <p className="text-brown-600">Are you sure you want to delete this health record?</p>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
             <Button variant="danger" onClick={() => { onDelete(); onClose(); }}>Delete</Button>
@@ -620,11 +620,11 @@ const EditHealthModal: React.FC<{
         <Input label="Title" value={title} onChange={e => setTitle(e.target.value)} />
         <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
         <div>
-          <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Type</label>
+          <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Type</label>
           <select
             value={type}
             onChange={e => setType(e.target.value as 'CHECKUP' | 'MEDICATION' | 'VACCINE' | 'OTHER')}
-            className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+            className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
           >
             <option value="CHECKUP">Checkup</option>
             <option value="MEDICATION">Medication</option>
@@ -634,7 +634,7 @@ const EditHealthModal: React.FC<{
         </div>
         <TextArea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
         
-        <div className="pt-4 border-t border-stone-100">
+        <div className="pt-4 border-t border-brown-100">
           <Toggle
             checked={share}
             onChange={setShare}
@@ -642,7 +642,7 @@ const EditHealthModal: React.FC<{
           />
           {share && acceptedCollaborators.length > 0 && (
             <div className="mt-3 pl-[52px]">
-              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <p className="text-xs font-bold text-brown-500 uppercase mb-2">Select Collaborators</p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {acceptedCollaborators.map(collab => (
                   <label
@@ -650,7 +650,7 @@ const EditHealthModal: React.FC<{
                     className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
                       selectedCollaboratorIds.includes(collab.id)
                         ? 'bg-indigo-100 border-2 border-indigo-300'
-                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                        : 'bg-brown-50 border border-brown-200 hover:border-indigo-200'
                     }`}
                   >
                     <input
@@ -663,8 +663,8 @@ const EditHealthModal: React.FC<{
                       {collab.name[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
-                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                      <p className="text-sm font-medium text-brown-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-brown-500">{collab.email}</p>}
                     </div>
                   </label>
                 ))}
@@ -672,7 +672,7 @@ const EditHealthModal: React.FC<{
             </div>
           )}
           {share && acceptedCollaborators.length === 0 && (
-            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+            <p className="text-xs text-brown-400 mt-2 pl-[52px]">
               No accepted collaborators yet.
             </p>
           )}
@@ -754,7 +754,7 @@ const EditNoteModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowDeleteConfirm(false)} title="Delete Note">
         <div className="space-y-4">
-          <p className="text-stone-600">Are you sure you want to delete this note?</p>
+          <p className="text-brown-600">Are you sure you want to delete this note?</p>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
             <Button variant="danger" onClick={() => { onDelete(); onClose(); }}>Delete</Button>
@@ -770,7 +770,7 @@ const EditNoteModal: React.FC<{
         <Input label="Title" value={title} onChange={e => setTitle(e.target.value)} />
         <TextArea label="Content" value={content} onChange={e => setContent(e.target.value)} />
         
-        <div className="pt-4 border-t border-stone-100">
+        <div className="pt-4 border-t border-brown-100">
           <Toggle
             checked={share}
             onChange={setShare}
@@ -778,7 +778,7 @@ const EditNoteModal: React.FC<{
           />
           {share && acceptedCollaborators.length > 0 && (
             <div className="mt-3 pl-[52px]">
-              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <p className="text-xs font-bold text-brown-500 uppercase mb-2">Select Collaborators</p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {acceptedCollaborators.map(collab => (
                   <label
@@ -786,7 +786,7 @@ const EditNoteModal: React.FC<{
                     className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
                       selectedCollaboratorIds.includes(collab.id)
                         ? 'bg-indigo-100 border-2 border-indigo-300'
-                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                        : 'bg-brown-50 border border-brown-200 hover:border-indigo-200'
                     }`}
                   >
                     <input
@@ -799,8 +799,8 @@ const EditNoteModal: React.FC<{
                       {collab.name[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
-                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                      <p className="text-sm font-medium text-brown-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-brown-500">{collab.email}</p>}
                     </div>
                   </label>
                 ))}
@@ -808,7 +808,7 @@ const EditNoteModal: React.FC<{
             </div>
           )}
           {share && acceptedCollaborators.length === 0 && (
-            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+            <p className="text-xs text-brown-400 mt-2 pl-[52px]">
               No accepted collaborators yet.
             </p>
           )}
@@ -894,7 +894,7 @@ const EditFinanceModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowDeleteConfirm(false)} title="Delete Financial Record">
         <div className="space-y-4">
-          <p className="text-stone-600">Are you sure you want to delete this financial record?</p>
+          <p className="text-brown-600">Are you sure you want to delete this financial record?</p>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
             <Button variant="danger" onClick={() => { onDelete(); onClose(); }}>Delete</Button>
@@ -913,11 +913,11 @@ const EditFinanceModal: React.FC<{
             <Input label="Amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div className="flex-1">
-            <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Type</label>
+            <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Type</label>
             <select
               value={type}
               onChange={e => setType(e.target.value)}
-              className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+              className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
             >
               <option value="EXPENSE">Expense</option>
               <option value="GIFT">Gift</option>
@@ -928,7 +928,7 @@ const EditFinanceModal: React.FC<{
         </div>
         <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
         
-        <div className="pt-4 border-t border-stone-100">
+        <div className="pt-4 border-t border-brown-100">
           <Toggle
             checked={share}
             onChange={setShare}
@@ -936,7 +936,7 @@ const EditFinanceModal: React.FC<{
           />
           {share && acceptedCollaborators.length > 0 && (
             <div className="mt-3 pl-[52px]">
-              <p className="text-xs font-bold text-stone-500 uppercase mb-2">Select Collaborators</p>
+              <p className="text-xs font-bold text-brown-500 uppercase mb-2">Select Collaborators</p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {acceptedCollaborators.map(collab => (
                   <label
@@ -944,7 +944,7 @@ const EditFinanceModal: React.FC<{
                     className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
                       selectedCollaboratorIds.includes(collab.id)
                         ? 'bg-indigo-100 border-2 border-indigo-300'
-                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                        : 'bg-brown-50 border border-brown-200 hover:border-indigo-200'
                     }`}
                   >
                     <input
@@ -957,8 +957,8 @@ const EditFinanceModal: React.FC<{
                       {collab.name[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
-                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                      <p className="text-sm font-medium text-brown-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-brown-500">{collab.email}</p>}
                     </div>
                   </label>
                 ))}
@@ -966,7 +966,7 @@ const EditFinanceModal: React.FC<{
             </div>
           )}
           {share && acceptedCollaborators.length === 0 && (
-            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+            <p className="text-xs text-brown-400 mt-2 pl-[52px]">
               No accepted collaborators yet.
             </p>
           )}
@@ -1043,7 +1043,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
   ];
 
   const renderShareToggle = (isShared: boolean) => (
-    <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${isShared ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-stone-50 text-stone-400 border-stone-100'}`}>
+    <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${isShared ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-brown-50 text-brown-400 border-brown-100'}`}>
       <Icon name={isShared ? 'group' : 'lock'} className="text-[14px]" />
       {isShared ? 'Shared' : 'Private'}
     </div>
@@ -1064,32 +1064,45 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
       case 'HIGH': return 'bg-red-400';
       case 'MEDIUM': return 'bg-amber-400';
       case 'LOW': return 'bg-green-400';
-      default: return 'bg-stone-300';
+      default: return 'bg-brown-300';
     }
   };
 
+  const heroGradient = person.themeColor?.includes('plum')
+    ? 'from-plum-50 via-cream to-plum-100'
+    : person.themeColor?.includes('coral')
+      ? 'from-coral-50 via-turmeric-50 to-cream'
+      : 'from-turmeric-50 via-cream to-plum-50';
+
   return (
-    <div className="max-w-4xl mx-auto pb-20">
-      {/* Header */}
-      <div className="sticky top-0 bg-cream/95 backdrop-blur-md z-10 pt-4 pb-2 mb-4 border-b border-stone-100">
-        <button onClick={onBack} className="flex items-center text-stone-500 hover:text-stone-800 mb-4 text-sm font-semibold">
+    <div className="max-w-4xl mx-auto pb-20 space-y-6">
+      {/* Back link */}
+      <div className="pt-2">
+        <button onClick={onBack} className="flex items-center text-brown-500 hover:text-brown-800 text-sm font-semibold">
           <Icon name="arrow_back" className="text-lg mr-1" /> Back to Dashboard
         </button>
+      </div>
 
-        <div className="flex items-center gap-6 mb-8">
+      {/* Hero */}
+      <div className={`relative rounded-4xl bg-gradient-to-br ${heroGradient} border border-turmeric-100 shadow-warm-xl overflow-hidden p-6 md:p-8`}>
+        <div className="absolute inset-0 decorative-dots opacity-[0.08]" />
+        <div className="absolute right-6 -top-6 w-32 h-32 bg-plum-200/30 rounded-full blur-3xl" />
+        <div className="absolute -left-10 bottom-0 w-32 h-32 bg-coral-200/25 rounded-full blur-3xl" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
           <div className="relative group">
             <Avatar
               src={person.avatarUrl}
               alt={person.name}
               size="w-32 h-32"
-              className={`border-4 border-white shadow-lg ${isUploading ? 'opacity-50' : ''}`}
+              className={`border-4 border-white/80 shadow-warm-xl ${isUploading ? 'opacity-50' : ''}`}
             />
             {isUploading ? (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-800"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brown-800"></div>
               </div>
             ) : (
-              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity">
+              <label className="absolute inset-0 flex items-center justify-center bg-black/35 text-white opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity">
                 <Icon name="photo_camera" />
                 <input
                   type="file"
@@ -1112,13 +1125,15 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
               </label>
             )}
           </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-stone-800">{person.name}</h1>
-              <button onClick={() => setShowEditProfileModal(true)} className="text-stone-400 hover:text-stone-600">
+
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-title font-extrabold text-brown-900 heading-display">{person.name}</h1>
+              <Badge text={person.relation} variant="turmeric" />
+              <button onClick={() => setShowEditProfileModal(true)} className="text-brown-500 hover:text-brown-800">
                 <Icon name="edit" className="text-xl" />
               </button>
-              <button onClick={() => setShowShareModal(true)} className="text-stone-400 hover:text-indigo-600 relative">
+              <button onClick={() => setShowShareModal(true)} className="text-brown-500 hover:text-indigo-600 relative">
                 <Icon name="group" className="text-xl" />
                 {person.collaborators.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -1127,19 +1142,50 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                 )}
               </button>
             </div>
-            <p className="text-stone-500 text-lg">{person.relation}</p>
+
+            <div className="flex flex-wrap gap-2 text-caption text-brown-600">
+              {person.birthday && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/70 border border-white/60 text-coral-700">
+                  <Icon name="cake" className="text-sm" /> {person.birthday}
+                </span>
+              )}
+              {person.email && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/70 border border-white/60">
+                  <Icon name="mail" className="text-sm" /> {person.email}
+                </span>
+              )}
+              {person.phone && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/70 border border-white/60">
+                  <Icon name="call" className="text-sm" /> {person.phone}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-1">
+              <Button variant="primary" size="sm" onClick={() => { setActiveTab(RecordType.TODO); openAddModal(RecordType.TODO); }}>
+                <Icon name="add_task" /> Add Task
+              </Button>
+              <Button variant="plum" size="sm" onClick={() => { setActiveTab(RecordType.HEALTH); openAddModal(RecordType.HEALTH); }}>
+                <Icon name="monitor_heart" /> Add Health
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => { setActiveTab(RecordType.NOTE); openAddModal(RecordType.NOTE); }}>
+                <Icon name="edit_note" /> New Note
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      {/* Navigation Tabs */}
+      <div className="sticky top-0 z-10 bg-cream/90 backdrop-blur-md border-b border-turmeric-100 py-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar px-1">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                ? 'bg-stone-800 text-white shadow-md'
-                : 'bg-white text-stone-600 hover:bg-stone-100'
+              className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold transition-all whitespace-nowrap border ${activeTab === tab.id
+                ? 'bg-gradient-to-r from-turmeric-400 to-plum-400 text-white shadow-glow-turmeric shadow-lg scale-[1.02]'
+                : 'bg-white/80 text-brown-600 border-brown-100 hover:bg-brown-50'
                 }`}
             >
               <Icon name={tab.icon} />
@@ -1147,9 +1193,10 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Content Area */}
-        <div className="mt-8">
+      {/* Content Area */}
+      <div className="mt-2">
           {activeTab === RecordType.PROFILE && (() => {
             const stats = getStats(person);
             const activities = getActivityFeed(person);
@@ -1198,7 +1245,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                 {/* Activity Timeline */}
                 <Card className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider">Recent Activity</h3>
+                    <h3 className="text-xs font-bold text-brown-400 uppercase tracking-wider">Recent Activity</h3>
                     {person.collaborators.length > 0 && (
                       <button
                         onClick={() => setShowShareModal(true)}
@@ -1217,18 +1264,18 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                   </div>
 
                   {activities.length > 0 ? (
-                    <div className="divide-y divide-stone-100">
+                    <div className="divide-y divide-brown-100">
                       {activities.map((item, idx) => (
                         <ActivityFeedItem key={idx} item={item} />
                       ))}
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
-                        <Icon name="history" className="text-3xl text-stone-400" />
+                      <div className="w-16 h-16 rounded-full bg-brown-100 flex items-center justify-center mx-auto mb-4">
+                        <Icon name="history" className="text-3xl text-brown-400" />
                       </div>
-                      <p className="text-stone-500 mb-2">No activity yet</p>
-                      <p className="text-sm text-stone-400">Add todos, health records, notes, or finances to see them here</p>
+                      <p className="text-brown-500 mb-2">No activity yet</p>
+                      <p className="text-sm text-brown-400">Add todos, health records, notes, or finances to see them here</p>
                     </div>
                   )}
                 </Card>
@@ -1239,17 +1286,17 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           {activeTab === RecordType.HEALTH && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-stone-800">Health Records</h3>
+                <h3 className="font-bold text-brown-800">Health Records</h3>
                 <Button variant="primary" onClick={() => openAddModal(RecordType.HEALTH)}>
                   <Icon name="add" /> Add Record
                 </Button>
               </div>
               {person.health.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-stone-200">
-                  <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-300">
+                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-brown-200">
+                  <div className="w-16 h-16 bg-brown-50 rounded-full flex items-center justify-center mx-auto mb-4 text-brown-300">
                     <Icon name="monitor_heart" className="text-2xl" />
                   </div>
-                  <p className="text-stone-500">No health records yet.</p>
+                  <p className="text-brown-500">No health records yet.</p>
                 </div>
               ) : (
                 person.health.map(record => (
@@ -1265,11 +1312,11 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-stone-800">{record.title}</h4>
+                            <h4 className="font-bold text-brown-800">{record.title}</h4>
                             {record.sharedFrom && <SharedByBadge sharedFrom={record.sharedFrom} />}
                           </div>
-                          <p className="text-sm text-stone-500">{record.date} • {record.type}</p>
-                          {record.notes && <p className="mt-2 text-stone-600 text-sm bg-stone-50 p-2 rounded-lg">{record.notes}</p>}
+                          <p className="text-sm text-brown-500">{record.date} • {record.type}</p>
+                          {record.notes && <p className="mt-2 text-brown-600 text-sm bg-brown-50 p-2 rounded-lg">{record.notes}</p>}
                           {record.attachments && record.attachments.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
                               {record.attachments.map((url, i) => (
@@ -1283,7 +1330,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Icon name="chevron_right" className="text-stone-300 group-hover:text-stone-500" />
+                        <Icon name="chevron_right" className="text-brown-300 group-hover:text-brown-500" />
                       </div>
                     </div>
                   </Card>
@@ -1295,24 +1342,24 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           {activeTab === RecordType.TODO && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-stone-800">Todos & Tasks</h3>
+                <h3 className="font-bold text-brown-800">Todos & Tasks</h3>
                 <Button variant="primary" onClick={() => openAddModal(RecordType.TODO)}>
                   <Icon name="add" /> Add Task
                 </Button>
               </div>
               {person.todos.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-stone-200">
-                  <p className="text-stone-500">No tasks yet.</p>
+                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-brown-200">
+                  <p className="text-brown-500">No tasks yet.</p>
                 </div>
               ) : (
                 person.todos.map(todo => (
                   <div
                     key={todo.id}
-                    className={`flex items-center gap-4 p-4 bg-white rounded-2xl border transition-all ${todo.isCompleted ? 'border-stone-100 opacity-60' : 'border-stone-200 shadow-sm'} ${todo.sharedFrom ? 'border-l-4 border-l-indigo-400' : ''}`}
+                    className={`flex items-center gap-4 p-4 bg-white rounded-2xl border transition-all ${todo.isCompleted ? 'border-brown-100 opacity-60' : 'border-brown-200 shadow-sm'} ${todo.sharedFrom ? 'border-l-4 border-l-indigo-400' : ''}`}
                   >
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleTodo(todo.id, !todo.isCompleted); }}
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${todo.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-stone-300 hover:border-green-500'
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${todo.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'border-brown-300 hover:border-green-500'
                         }`}
                     >
                       {todo.isCompleted && <Icon name="check" className="text-sm" />}
@@ -1320,18 +1367,18 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                     <div className="flex-1 cursor-pointer" onClick={() => setEditingTodo(todo)}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <div className={`w-2 h-2 rounded-full ${getPriorityColor(todo.priority)}`} />
-                        <h4 className={`font-medium ${todo.isCompleted ? 'line-through text-stone-400' : 'text-stone-800'}`}>
+                        <h4 className={`font-medium ${todo.isCompleted ? 'line-through text-brown-400' : 'text-brown-800'}`}>
                           {todo.title}
                         </h4>
                         {todo.sharedFrom && <SharedByBadge sharedFrom={todo.sharedFrom} />}
                       </div>
                       {todo.description && (
-                        <p className="text-xs text-stone-500 mt-1 line-clamp-1">{todo.description}</p>
+                        <p className="text-xs text-brown-500 mt-1 line-clamp-1">{todo.description}</p>
                       )}
-                      <p className="text-xs text-stone-400 mt-1">Due {todo.dueDate}</p>
+                      <p className="text-xs text-brown-400 mt-1">Due {todo.dueDate}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setEditingTodo(todo)} className="text-stone-400 hover:text-stone-600 p-1.5">
+                      <button onClick={() => setEditingTodo(todo)} className="text-brown-400 hover:text-brown-600 p-1.5">
                         <Icon name="edit" className="text-lg" />
                       </button>
                     </div>
@@ -1344,7 +1391,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           {activeTab === RecordType.NOTE && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-stone-800">Notes & Memories</h3>
+                <h3 className="font-bold text-brown-800">Notes & Memories</h3>
                 <Button variant="primary" onClick={() => openAddModal(RecordType.NOTE)}>
                   <Icon name="add" /> Add Note
                 </Button>
@@ -1357,10 +1404,10 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                     onClick={() => setEditingNote(note)}
                   >
                     <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
-                      <h4 className="font-bold text-stone-800">{note.title}</h4>
+                      <h4 className="font-bold text-brown-800">{note.title}</h4>
                       {note.sharedFrom && <SharedByBadge sharedFrom={note.sharedFrom} />}
                     </div>
-                    <p className="text-stone-600 text-sm whitespace-pre-wrap line-clamp-4">{note.content}</p>
+                    <p className="text-brown-600 text-sm whitespace-pre-wrap line-clamp-4">{note.content}</p>
                   </Card>
                 ))}
               </div>
@@ -1370,7 +1417,7 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           {activeTab === RecordType.FINANCE && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-stone-800">Financial Records</h3>
+                <h3 className="font-bold text-brown-800">Financial Records</h3>
                 <Button variant="primary" onClick={() => openAddModal(RecordType.FINANCE)}>
                   <Icon name="add" /> Add Record
                 </Button>
@@ -1398,10 +1445,10 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-stone-800">{record.title}</h4>
+                            <h4 className="font-bold text-brown-800">{record.title}</h4>
                             {record.sharedFrom && <SharedByBadge sharedFrom={record.sharedFrom} />}
                           </div>
-                          <p className="text-xs text-stone-500">{record.date} • {record.type}</p>
+                          <p className="text-xs text-brown-500">{record.date} • {record.type}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1415,13 +1462,12 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-stone-200">
-                  <p className="text-stone-500">No financial records yet.</p>
+                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-brown-200">
+                  <p className="text-brown-500">No financial records yet.</p>
                 </div>
               )}
             </div>
           )}
-        </div>
 
         {/* Modals */}
         <ShareSettingsModal
@@ -1612,7 +1658,7 @@ const ShareSettingsModal: React.FC<{
               name: p.name,
               relation: p.relation || '',
               avatarUrl: p.avatar_url || generateAvatarUrl(p.name),
-              themeColor: p.theme_color || 'bg-stone-100',
+              themeColor: p.theme_color || 'bg-brown-100',
               birthday: p.birthday || '',
               email: p.email || undefined,
               linkedUserId: p.linked_user_id || undefined,
@@ -1779,7 +1825,7 @@ const ShareSettingsModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowEmailPrompt(false)} title="Email Required">
         <div className="space-y-4">
-          <p className="text-stone-600">
+          <p className="text-brown-600">
             To share this profile, you need to add an email address. This helps collaborators identify and connect with this profile.
           </p>
           <Input 
@@ -1807,7 +1853,7 @@ const ShareSettingsModal: React.FC<{
     return (
       <Modal isOpen={isOpen} onClose={() => setShowRemoveConfirm(null)} title="Remove Collaborator">
         <div className="space-y-4">
-          <p className="text-stone-600">
+          <p className="text-brown-600">
             Are you sure you want to remove <strong>{collaborator?.name}</strong> as a collaborator?
           </p>
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
@@ -1853,11 +1899,11 @@ const ShareSettingsModal: React.FC<{
         )}
 
         {/* Default Preference */}
-        <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+        <div className="bg-brown-50 p-4 rounded-xl border border-brown-100">
           <div className="flex justify-between items-center mb-2">
-            <span className="font-bold text-stone-800">Default Sharing Preference</span>
+            <span className="font-bold text-brown-800">Default Sharing Preference</span>
           </div>
-          <p className="text-xs text-stone-500 mb-4">When adding new items, should they be shared by default?</p>
+          <p className="text-xs text-brown-500 mb-4">When adding new items, should they be shared by default?</p>
           <Toggle
             checked={person.sharingPreference === 'ALWAYS_SHARE'}
             onChange={handleTogglePref}
@@ -1867,18 +1913,18 @@ const ShareSettingsModal: React.FC<{
 
         {/* Current Collaborators */}
         <div>
-          <h4 className="font-bold text-stone-700 mb-3">Current Collaborators</h4>
+          <h4 className="font-bold text-brown-700 mb-3">Current Collaborators</h4>
           <div className="space-y-2">
-            {collaboratorDetails.length === 0 && <p className="text-sm text-stone-400 italic">No one else has access yet.</p>}
+            {collaboratorDetails.length === 0 && <p className="text-sm text-brown-400 italic">No one else has access yet.</p>}
             {collaboratorDetails.map(c => (
-              <div key={c.id} className="flex justify-between items-center p-3 bg-white border border-stone-100 rounded-xl">
+              <div key={c.id} className="flex justify-between items-center p-3 bg-white border border-brown-100 rounded-xl">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">
                     {c.name.charAt(0)}
                   </div>
                   <div>
-                    <span className="font-medium text-stone-700">{c.name}</span>
-                    {c.email && <p className="text-xs text-stone-400">{c.email}</p>}
+                    <span className="font-medium text-brown-700">{c.name}</span>
+                    {c.email && <p className="text-xs text-brown-400">{c.email}</p>}
                   </div>
                 </div>
                 <Button 
@@ -1896,17 +1942,17 @@ const ShareSettingsModal: React.FC<{
 
         {/* Invite Methods */}
         <div>
-          <h4 className="font-bold text-stone-700 mb-3">Invite Collaborators</h4>
+          <h4 className="font-bold text-brown-700 mb-3">Invite Collaborators</h4>
           
           {/* Tabs */}
-          <div className="flex gap-1 mb-4 bg-stone-100 p-1 rounded-xl">
+          <div className="flex gap-1 mb-4 bg-brown-100 p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setActiveTab('link')}
               className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'link'
-                  ? 'bg-white text-stone-800 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white text-brown-800 shadow-sm'
+                  : 'text-brown-500 hover:text-brown-700'
               }`}
             >
               <Icon name="link" className="mr-1" />
@@ -1917,8 +1963,8 @@ const ShareSettingsModal: React.FC<{
               onClick={() => setActiveTab('existing')}
               className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'existing'
-                  ? 'bg-white text-stone-800 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white text-brown-800 shadow-sm'
+                  : 'text-brown-500 hover:text-brown-700'
               }`}
             >
               <Icon name="person" className="mr-1" />
@@ -1929,8 +1975,8 @@ const ShareSettingsModal: React.FC<{
               onClick={() => setActiveTab('email')}
               className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'email'
-                  ? 'bg-white text-stone-800 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'bg-white text-brown-800 shadow-sm'
+                  : 'text-brown-500 hover:text-brown-700'
               }`}
             >
               <Icon name="email" className="mr-1" />
@@ -1941,7 +1987,7 @@ const ShareSettingsModal: React.FC<{
           {/* Share Link Tab */}
           {activeTab === 'link' && (
             <div className="space-y-3">
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-brown-500">
                 Generate a shareable link that anyone can use to collaborate on this profile.
               </p>
               
@@ -1952,14 +1998,14 @@ const ShareSettingsModal: React.FC<{
                       type="text"
                       value={shareLink}
                       readOnly
-                      className="flex-1 p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none"
+                      className="flex-1 p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none"
                     />
                     <Button variant="primary" onClick={handleCopyLink}>
                       <Icon name={linkCopied ? 'check' : 'content_copy'} />
                       {linkCopied ? 'Copied!' : 'Copy'}
                     </Button>
                   </div>
-                  <p className="text-xs text-stone-400">
+                  <p className="text-xs text-brown-400">
                     Share this link via WhatsApp, SMS, or any messaging app. When they open it, they can join your circle.
                   </p>
                   <Button variant="ghost" onClick={() => setShareLink('')} className="w-full">
@@ -1983,15 +2029,15 @@ const ShareSettingsModal: React.FC<{
           {activeTab === 'existing' && (
             <div className="space-y-3">
               {availableProfiles.length === 0 ? (
-                <p className="text-sm text-stone-400 italic">No other profiles available. Create more profiles to invite them.</p>
+                <p className="text-sm text-brown-400 italic">No other profiles available. Create more profiles to invite them.</p>
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Select Profile</label>
+                    <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Select Profile</label>
                     <select
                       value={selectedProfileId}
                       onChange={e => setSelectedProfileId(e.target.value)}
-                      className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+                      className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
                     >
                       <option value="">Choose a profile...</option>
                       {availableProfiles.map(profile => (
@@ -2031,7 +2077,7 @@ const ShareSettingsModal: React.FC<{
           {/* Email Tab */}
           {activeTab === 'email' && (
             <form onSubmit={handleInviteNewUser} className="space-y-3">
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-brown-500">
                 Enter their email address. They'll receive a collaboration request when they sign up.
               </p>
               <Input
@@ -2186,11 +2232,11 @@ const AddItemModal: React.FC<{
         {type === RecordType.TODO && (
           <>
             <div>
-              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Priority</label>
+              <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Priority</label>
               <select
                 value={priority}
                 onChange={e => setPriority(e.target.value)}
-                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+                className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -2207,11 +2253,11 @@ const AddItemModal: React.FC<{
               <Input label="Amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Type</label>
+              <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Type</label>
               <select
                 value={financeType}
                 onChange={e => setFinanceType(e.target.value)}
-                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+                className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
               >
                 <option value="EXPENSE">Expense</option>
                 <option value="GIFT">Gift</option>
@@ -2225,11 +2271,11 @@ const AddItemModal: React.FC<{
         {type === RecordType.HEALTH && (
           <>
             <div>
-              <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Type</label>
+              <label className="block text-xs font-bold text-brown-500 uppercase mb-1">Type</label>
               <select
                 value={healthType}
                 onChange={e => setHealthType(e.target.value)}
-                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-stone-400 transition-colors"
+                className="w-full p-3 bg-brown-50 border border-brown-200 rounded-xl text-sm outline-none focus:border-brown-400 transition-colors"
               >
                 <option value="CHECKUP">Checkup</option>
                 <option value="MEDICATION">Medication</option>
@@ -2247,18 +2293,18 @@ const AddItemModal: React.FC<{
 
         {type === RecordType.HEALTH && (
           <div>
-            <label className="block text-xs font-bold text-stone-500 uppercase mb-1.5">Attachments</label>
+            <label className="block text-xs font-bold text-brown-500 uppercase mb-1.5">Attachments</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {files.map((f, i) => (
-                <div key={i} className="bg-stone-100 px-2 py-1 rounded text-xs flex items-center gap-1">
+                <div key={i} className="bg-brown-100 px-2 py-1 rounded text-xs flex items-center gap-1">
                   <span className="truncate max-w-[150px]">{f.name}</span>
-                  <button onClick={() => setFiles(files.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-stone-600">
+                  <button onClick={() => setFiles(files.filter((_, idx) => idx !== i))} className="text-brown-400 hover:text-brown-600">
                     <Icon name="close" className="text-sm" />
                   </button>
                 </div>
               ))}
             </div>
-            <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-100 transition-colors">
+            <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-brown-50 border border-brown-200 rounded-lg text-sm text-brown-600 hover:bg-brown-100 transition-colors">
               <Icon name="attach_file" />
               <span>Attach Files</span>
               <input
@@ -2275,7 +2321,7 @@ const AddItemModal: React.FC<{
           </div>
         )}
 
-        <div className="pt-4 border-t border-stone-100">
+        <div className="pt-4 border-t border-brown-100">
           <Toggle
             checked={share}
             onChange={(val) => {
@@ -2290,7 +2336,7 @@ const AddItemModal: React.FC<{
           {share && acceptedCollaborators.length > 0 && (
             <div className="mt-3 pl-[52px]">
               <div className="flex justify-between items-center mb-2">
-                <p className="text-xs font-bold text-stone-500 uppercase">Select Collaborators</p>
+                <p className="text-xs font-bold text-brown-500 uppercase">Select Collaborators</p>
                 <span className="text-xs text-indigo-600">
                   {selectedCollaboratorIds.length} of {acceptedCollaborators.length} selected
                 </span>
@@ -2302,7 +2348,7 @@ const AddItemModal: React.FC<{
                     className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
                       selectedCollaboratorIds.includes(collab.id)
                         ? 'bg-indigo-100 border-2 border-indigo-300'
-                        : 'bg-stone-50 border border-stone-200 hover:border-indigo-200'
+                        : 'bg-brown-50 border border-brown-200 hover:border-indigo-200'
                     }`}
                   >
                     <input
@@ -2315,8 +2361,8 @@ const AddItemModal: React.FC<{
                       {collab.name[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-stone-800">{collab.name}</p>
-                      {collab.email && <p className="text-xs text-stone-500">{collab.email}</p>}
+                      <p className="text-sm font-medium text-brown-800">{collab.name}</p>
+                      {collab.email && <p className="text-xs text-brown-500">{collab.email}</p>}
                     </div>
                   </label>
                 ))}
@@ -2324,12 +2370,12 @@ const AddItemModal: React.FC<{
             </div>
           )}
           {share && acceptedCollaborators.length === 0 && (
-            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+            <p className="text-xs text-brown-400 mt-2 pl-[52px]">
               No accepted collaborators yet. Add collaborators from the profile sharing settings.
             </p>
           )}
           {!share && (
-            <p className="text-xs text-stone-400 mt-2 pl-[52px]">
+            <p className="text-xs text-brown-400 mt-2 pl-[52px]">
               Only you will see this.
             </p>
           )}

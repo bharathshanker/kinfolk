@@ -380,7 +380,7 @@ export const usePeople = () => {
                     name: p.name,
                     relation: p.relation || '',
                     avatarUrl: p.avatar_url || generateAvatarUrl(p.name, p.gender as 'male' | 'female' | 'other'),
-                    themeColor: p.theme_color || 'bg-stone-100',
+                    themeColor: p.theme_color || 'bg-brown-100',
                     birthday: p.birthday || '',
                     email: p.email || '',
                     phone: p.phone || '',
@@ -565,7 +565,7 @@ export const usePeople = () => {
             date_of_birth: dateOfBirth || '',
             gender: gender || 'other',
             created_by: user.id,
-            theme_color: 'bg-stone-100'
+            theme_color: 'bg-brown-100'
         });
 
         if (error) throw error;
@@ -1297,7 +1297,7 @@ export const usePeople = () => {
                     email: snapshot?.email || null,
                     birthday: snapshot?.birthday || null,
                     created_by: user.id,
-                    theme_color: 'bg-stone-100'
+                    theme_color: 'bg-brown-100'
                 })
                 .select()
                 .single();

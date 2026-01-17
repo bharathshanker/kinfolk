@@ -105,19 +105,19 @@ export const ChatBot: React.FC<ChatBotProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-stone-900/20 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
+      <div className="absolute inset-0 bg-brown-900/20 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
 
       {/* Sidebar/Panel */}
       <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col pointer-events-auto transform transition-transform animate-slide-in-right">
         {/* Header */}
-        <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-cream">
+        <div className="p-4 border-b border-brown-100 flex items-center justify-between bg-cream">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-200 to-purple-200 flex items-center justify-center text-indigo-700">
               <Icon name="network_intelligence" className="text-xl" />
             </div>
             <div>
-              <h3 className="font-bold text-stone-800">Kinfolk AI</h3>
-              <p className="text-xs text-stone-500">Powered by Gemini 3 Pro</p>
+              <h3 className="font-bold text-brown-800">Kinfolk AI</h3>
+              <p className="text-xs text-brown-500">Powered by Gemini 3 Pro</p>
             </div>
           </div>
           <Button variant="icon" onClick={onClose}>
@@ -126,7 +126,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-brown-50">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -134,8 +134,8 @@ export const ChatBot: React.FC<ChatBotProps> = ({
             >
               <div
                 className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                  ? 'bg-stone-800 text-white rounded-br-none'
-                  : 'bg-white border border-stone-100 text-stone-700 shadow-sm rounded-bl-none'
+                  ? 'bg-brown-800 text-white rounded-br-none'
+                  : 'bg-white border border-brown-100 text-brown-700 shadow-sm rounded-bl-none'
                   }`}
               >
                 {msg.text.split('\n').map((line, i) => <p key={i} className="mb-1 last:mb-0">{line}</p>)}
@@ -144,11 +144,11 @@ export const ChatBot: React.FC<ChatBotProps> = ({
           ))}
           {isThinking && (
             <div className="flex justify-start">
-              <div className="bg-white border border-stone-100 p-3 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-2">
-                <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" />
-                <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce delay-100" />
-                <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce delay-200" />
-                <span className="text-xs text-stone-400 ml-1">Thinking deeply...</span>
+              <div className="bg-white border border-brown-100 p-3 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-2">
+                <span className="w-2 h-2 bg-brown-400 rounded-full animate-bounce" />
+                <span className="w-2 h-2 bg-brown-400 rounded-full animate-bounce delay-100" />
+                <span className="w-2 h-2 bg-brown-400 rounded-full animate-bounce delay-200" />
+                <span className="text-xs text-brown-400 ml-1">Thinking deeply...</span>
               </div>
             </div>
           )}
@@ -156,14 +156,14 @@ export const ChatBot: React.FC<ChatBotProps> = ({
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-white border-t border-stone-100">
-          <div className="flex items-end gap-2 bg-stone-50 p-2 rounded-xl border border-stone-200 focus-within:ring-2 focus-within:ring-stone-200 focus-within:border-stone-400 transition-all">
+        <div className="p-4 bg-white border-t border-brown-100">
+          <div className="flex items-end gap-2 bg-brown-50 p-2 rounded-xl border border-brown-200 focus-within:ring-2 focus-within:ring-brown-200 focus-within:border-brown-400 transition-all">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask about your family..."
-              className="w-full bg-transparent border-none focus:ring-0 resize-none text-stone-700 text-sm max-h-32 p-2 placeholder-stone-400 outline-none"
+              className="w-full bg-transparent border-none focus:ring-0 resize-none text-brown-700 text-sm max-h-32 p-2 placeholder-brown-400 outline-none"
               rows={1}
               style={{ minHeight: '44px' }}
             />

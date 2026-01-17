@@ -154,7 +154,7 @@ export const InvitePage: React.FC<InvitePageProps> = ({
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-stone-500">Loading invite...</p>
+          <p className="mt-4 text-brown-500">Loading invite...</p>
         </div>
       </div>
     );
@@ -167,8 +167,8 @@ export const InvitePage: React.FC<InvitePageProps> = ({
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <Icon name="error" className="text-3xl text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-stone-800 mb-2">Invite Not Found</h2>
-          <p className="text-stone-500 mb-6">{error}</p>
+          <h2 className="text-xl font-bold text-brown-800 mb-2">Invite Not Found</h2>
+          <p className="text-brown-500 mb-6">{error}</p>
           <Button variant="primary" onClick={onClose}>
             Go to Dashboard
           </Button>
@@ -192,17 +192,17 @@ export const InvitePage: React.FC<InvitePageProps> = ({
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 mb-4">
               <Icon name="group_add" className="text-3xl text-indigo-600" />
             </div>
-            <h1 className="text-2xl font-bold text-stone-800">Collaboration Invite</h1>
+            <h1 className="text-2xl font-bold text-brown-800">Collaboration Invite</h1>
           </div>
 
           {/* Requester Info */}
-          <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl mb-4">
+          <div className="flex items-center gap-3 p-4 bg-brown-50 rounded-xl mb-4">
             <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
               {inviteDetails.requesterName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="font-medium text-stone-800">{inviteDetails.requesterName}</p>
-              <p className="text-xs text-stone-500">invited you to collaborate</p>
+              <p className="font-medium text-brown-800">{inviteDetails.requesterName}</p>
+              <p className="text-xs text-brown-500">invited you to collaborate</p>
             </div>
           </div>
 
@@ -215,12 +215,12 @@ export const InvitePage: React.FC<InvitePageProps> = ({
                 className="w-20 h-20 rounded-full border-4 border-white shadow-lg object-cover"
               />
               <div>
-                <h3 className="text-xl font-bold text-stone-800">{inviteDetails.personName}</h3>
+                <h3 className="text-xl font-bold text-brown-800">{inviteDetails.personName}</h3>
                 {inviteDetails.personRelation && (
-                  <p className="text-stone-500">{inviteDetails.personRelation}</p>
+                  <p className="text-brown-500">{inviteDetails.personRelation}</p>
                 )}
                 {inviteDetails.profileSnapshot?.birthday && (
-                  <p className="text-xs text-stone-400 mt-1">
+                  <p className="text-xs text-brown-400 mt-1">
                     <Icon name="cake" className="text-xs mr-1" />
                     {new Date(inviteDetails.profileSnapshot.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
                   </p>
@@ -231,7 +231,7 @@ export const InvitePage: React.FC<InvitePageProps> = ({
 
           {/* Login Prompt */}
           <div className="text-center">
-            <p className="text-stone-500 mb-4">Sign in or create an account to accept this invitation.</p>
+            <p className="text-brown-500 mb-4">Sign in or create an account to accept this invitation.</p>
             <Button variant="primary" onClick={onLogin} className="w-full">
               Sign In to Accept
             </Button>
@@ -250,17 +250,17 @@ export const InvitePage: React.FC<InvitePageProps> = ({
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 mb-4">
             <Icon name="group_add" className="text-3xl text-indigo-600" />
           </div>
-          <h1 className="text-2xl font-bold text-stone-800">Accept Collaboration</h1>
+          <h1 className="text-2xl font-bold text-brown-800">Accept Collaboration</h1>
         </div>
 
         {/* Requester Info */}
-        <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl mb-4">
+        <div className="flex items-center gap-3 p-4 bg-brown-50 rounded-xl mb-4">
           <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
             {inviteDetails.requesterName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-medium text-stone-800">{inviteDetails.requesterName}</p>
-            <p className="text-xs text-stone-500">{inviteDetails.requesterEmail}</p>
+            <p className="font-medium text-brown-800">{inviteDetails.requesterName}</p>
+            <p className="text-xs text-brown-500">{inviteDetails.requesterEmail}</p>
           </div>
         </div>
 
@@ -273,9 +273,9 @@ export const InvitePage: React.FC<InvitePageProps> = ({
               className="w-20 h-20 rounded-full border-4 border-white shadow-lg object-cover"
             />
             <div>
-              <h3 className="text-xl font-bold text-stone-800">{inviteDetails.personName}</h3>
+              <h3 className="text-xl font-bold text-brown-800">{inviteDetails.personName}</h3>
               {inviteDetails.personRelation && (
-                <p className="text-stone-500">{inviteDetails.personRelation}</p>
+                <p className="text-brown-500">{inviteDetails.personRelation}</p>
               )}
             </div>
           </div>
@@ -325,8 +325,8 @@ export const InvitePage: React.FC<InvitePageProps> = ({
                   <Icon name="person_add" className="text-indigo-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-stone-800">Create as New Profile</p>
-                  <p className="text-xs text-stone-500 mt-1">
+                  <p className="text-sm font-medium text-brown-800">Create as New Profile</p>
+                  <p className="text-xs text-brown-500 mt-1">
                     Add this person to your circle as a new profile.
                   </p>
                   <Button
@@ -344,21 +344,21 @@ export const InvitePage: React.FC<InvitePageProps> = ({
 
             {/* Option 2: Merge with Existing */}
             {people.length > 0 && (
-              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl">
+              <div className="p-4 bg-brown-50 border border-brown-200 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
-                    <Icon name="merge" className="text-stone-600" />
+                  <div className="w-10 h-10 rounded-full bg-brown-100 flex items-center justify-center shrink-0">
+                    <Icon name="merge" className="text-brown-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-stone-800">Merge with Existing Profile</p>
-                    <p className="text-xs text-stone-500 mt-1">
+                    <p className="text-sm font-medium text-brown-800">Merge with Existing Profile</p>
+                    <p className="text-xs text-brown-500 mt-1">
                       If you already have a profile for this person, link them together.
                     </p>
                     <div className="mt-3">
                       <select
                         value={selectedPersonId || ''}
                         onChange={e => setSelectedPersonId(e.target.value || null)}
-                        className="w-full p-2 bg-white border border-stone-200 rounded-lg text-sm outline-none focus:border-indigo-400"
+                        className="w-full p-2 bg-white border border-brown-200 rounded-lg text-sm outline-none focus:border-indigo-400"
                       >
                         <option value="">Select a profile...</option>
                         {people.map(p => (

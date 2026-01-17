@@ -61,7 +61,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
                 onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
                 className={`p-1.5 rounded-lg transition-colors ${shareCount > 0
                         ? 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'
-                        : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600'
+                        : 'text-brown-400 hover:bg-brown-100 hover:text-brown-600'
                     }`}
                 title={shareCount > 0 ? `Shared with ${shareCount}` : 'Share'}
             >
@@ -80,19 +80,19 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
                     {/* Current Shares */}
                     {shares.length > 0 && (
                         <div>
-                            <h4 className="text-xs font-bold text-stone-500 uppercase mb-2">Shared With</h4>
+                            <h4 className="text-xs font-bold text-brown-500 uppercase mb-2">Shared With</h4>
                             <div className="space-y-2">
                                 {shares.map(share => (
-                                    <div key={share.id} className="flex justify-between items-center p-3 bg-stone-50 rounded-xl">
+                                    <div key={share.id} className="flex justify-between items-center p-3 bg-brown-50 rounded-xl">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
                                                 {(share.sharedByName || share.sharedWithEmail || 'U')[0].toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium text-stone-700">
+                                                <p className="text-sm font-medium text-brown-700">
                                                     {share.sharedByName || share.sharedWithEmail}
                                                 </p>
-                                                <p className="text-xs text-stone-400">
+                                                <p className="text-xs text-brown-400">
                                                     {share.status === 'PENDING' ? '⏳ Pending' :
                                                         share.status === 'ACCEPTED' ? '✓ Accepted' :
                                                             '✕ Declined'}
@@ -116,7 +116,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
 
                     {/* Add New Share */}
                     <div>
-                        <h4 className="text-xs font-bold text-stone-500 uppercase mb-2">Share With Someone New</h4>
+                        <h4 className="text-xs font-bold text-brown-500 uppercase mb-2">Share With Someone New</h4>
                         <form onSubmit={handleShare} className="flex gap-2">
                             <Input
                                 placeholder="email@example.com"
@@ -133,7 +133,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
                                 {isLoading ? '...' : 'Share'}
                             </Button>
                         </form>
-                        <p className="text-xs text-stone-400 mt-2">
+                        <p className="text-xs text-brown-400 mt-2">
                             They'll receive a notification to accept and merge into their profile.
                         </p>
                     </div>
@@ -141,7 +141,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
                     {/* Quick Share with Collaborators */}
                     {collaborators.length > 0 && (
                         <div>
-                            <h4 className="text-xs font-bold text-stone-500 uppercase mb-2">Quick Share</h4>
+                            <h4 className="text-xs font-bold text-brown-500 uppercase mb-2">Quick Share</h4>
                             <div className="flex flex-wrap gap-2">
                                 {collaborators
                                     .filter(c => !shares.find(s => s.sharedWithEmail === c || s.sharedByName === c))
@@ -149,7 +149,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
                                         <button
                                             key={collaborator}
                                             onClick={() => setEmail(collaborator)}
-                                            className="px-3 py-1.5 bg-stone-100 text-stone-600 rounded-full text-sm hover:bg-stone-200 transition-colors"
+                                            className="px-3 py-1.5 bg-brown-100 text-brown-600 rounded-full text-sm hover:bg-brown-200 transition-colors"
                                         >
                                             + {collaborator}
                                         </button>
@@ -226,18 +226,18 @@ export const PendingSharesInbox: React.FC<PendingSharesInboxProps> = ({
                     <div key={share.id} className="bg-white rounded-xl p-4 border border-indigo-100">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-stone-800 font-medium">
+                                <p className="text-brown-800 font-medium">
                                     <span className="text-indigo-600">{share.sharedByName}</span> shared a {getRecordTypeLabel(share.recordType)}
                                 </p>
-                                <p className="text-sm text-stone-500 mt-1">
+                                <p className="text-sm text-brown-500 mt-1">
                                     "{share.recordTitle}" from their <strong>{share.sourcePersonName}</strong> profile
                                 </p>
                             </div>
                         </div>
 
                         {activeShare === share.id ? (
-                            <div className="mt-4 p-3 bg-stone-50 rounded-xl">
-                                <p className="text-sm text-stone-600 mb-3">
+                            <div className="mt-4 p-3 bg-brown-50 rounded-xl">
+                                <p className="text-sm text-brown-600 mb-3">
                                     Which of your profiles should this merge into?
                                 </p>
                                 <div className="space-y-2 mb-4">
@@ -246,7 +246,7 @@ export const PendingSharesInbox: React.FC<PendingSharesInboxProps> = ({
                                             key={p.id}
                                             className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${selectedPersonId === p.id
                                                     ? 'bg-indigo-100 border-2 border-indigo-300'
-                                                    : 'bg-white border border-stone-200 hover:border-indigo-200'
+                                                    : 'bg-white border border-brown-200 hover:border-indigo-200'
                                                 }`}
                                         >
                                             <input
@@ -260,15 +260,15 @@ export const PendingSharesInbox: React.FC<PendingSharesInboxProps> = ({
                                                 {p.name[0]}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-stone-800">{p.name}</p>
-                                                <p className="text-xs text-stone-500">{p.relation}</p>
+                                                <p className="font-medium text-brown-800">{p.name}</p>
+                                                <p className="text-xs text-brown-500">{p.relation}</p>
                                             </div>
                                         </label>
                                     ))}
                                     <label
                                         className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${selectedPersonId === null
                                                 ? 'bg-indigo-100 border-2 border-indigo-300'
-                                                : 'bg-white border border-stone-200 hover:border-indigo-200'
+                                                : 'bg-white border border-brown-200 hover:border-indigo-200'
                                             }`}
                                     >
                                         <input
@@ -278,12 +278,12 @@ export const PendingSharesInbox: React.FC<PendingSharesInboxProps> = ({
                                             onChange={() => setSelectedPersonId(null)}
                                             className="hidden"
                                         />
-                                        <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
+                                        <div className="w-8 h-8 rounded-full bg-brown-100 flex items-center justify-center text-brown-400">
                                             <Icon name="add" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-stone-800">Keep Separate</p>
-                                            <p className="text-xs text-stone-500">Don't merge, view in "Shared with me"</p>
+                                            <p className="font-medium text-brown-800">Keep Separate</p>
+                                            <p className="text-xs text-brown-500">Don't merge, view in "Shared with me"</p>
                                         </div>
                                     </label>
                                 </div>
@@ -310,7 +310,7 @@ export const PendingSharesInbox: React.FC<PendingSharesInboxProps> = ({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => onDecline(share.id)}
-                                    className="text-stone-500"
+                                    className="text-brown-500"
                                 >
                                     Decline
                                 </Button>
