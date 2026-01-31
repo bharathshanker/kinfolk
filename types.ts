@@ -198,3 +198,16 @@ export interface Collaborator {
   email?: string;
   avatarUrl?: string;
 }
+
+export type {
+  HealthSystem,
+  HealthValueStatus,
+  HealthMarker,
+  HealthReport,
+  HealthValue,
+  HealthRatio,
+  HealthPhysical,
+  SystemSummary,
+  MarkerTrend,
+  HealthDashboardData
+} from './src/types/health';
