@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Person, RecordType, HealthRecord, TodoItem, Note, FinancialRecord, User, SharingPreference, SharedFromInfo } from '../types';
 import { Avatar, Button, Card, Icon, Badge, Modal, Toggle, Input, TextArea } from './Shared';
+import { HealthDashboard } from './health/HealthDashboard';
 import { generateAvatarUrl } from '../src/utils/avatars';
 
 // Shared By Badge Component
@@ -1284,58 +1285,61 @@ export const PersonDetail: React.FC<PersonDetailProps> = ({
           })()}
 
           {activeTab === RecordType.HEALTH && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-brown-800">Health Records</h3>
-                <Button variant="primary" onClick={() => openAddModal(RecordType.HEALTH)}>
-                  <Icon name="add" /> Add Record
-                </Button>
-              </div>
-              {person.health.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-brown-200">
-                  <div className="w-16 h-16 bg-brown-50 rounded-full flex items-center justify-center mx-auto mb-4 text-brown-300">
-                    <Icon name="monitor_heart" className="text-2xl" />
-                  </div>
-                  <p className="text-brown-500">No health records yet.</p>
+            <div className="space-y-8">
+              <HealthDashboard personId={person.id} personName={person.name} />
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-stone-800">Health Records</h3>
+                  <Button variant="primary" onClick={() => openAddModal(RecordType.HEALTH)}>
+                    <Icon name="add" /> Add Record
+                  </Button>
                 </div>
-              ) : (
-                person.health.map(record => (
-                  <Card
-                    key={record.id}
-                    className={`p-4 hover:shadow-md transition-shadow cursor-pointer group ${record.sharedFrom ? 'border-l-4 border-l-indigo-400' : ''}`}
-                    onClick={() => setEditingHealth(record)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-500 flex items-center justify-center shrink-0">
-                          <Icon name="medical_services" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-brown-800">{record.title}</h4>
-                            {record.sharedFrom && <SharedByBadge sharedFrom={record.sharedFrom} />}
-                          </div>
-                          <p className="text-sm text-brown-500">{record.date} • {record.type}</p>
-                          {record.notes && <p className="mt-2 text-brown-600 text-sm bg-brown-50 p-2 rounded-lg">{record.notes}</p>}
-                          {record.attachments && record.attachments.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {record.attachments.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-100 transition-colors" onClick={e => e.stopPropagation()}>
-                                  <Icon name="attachment" className="text-sm" />
-                                  <span>Attachment {i + 1}</span>
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Icon name="chevron_right" className="text-brown-300 group-hover:text-brown-500" />
-                      </div>
+                {person.health.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-stone-200">
+                    <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-300">
+                      <Icon name="monitor_heart" className="text-2xl" />
                     </div>
-                  </Card>
-                ))
-              )}
+                    <p className="text-stone-500">No health records yet.</p>
+                  </div>
+                ) : (
+                  person.health.map(record => (
+                    <Card
+                      key={record.id}
+                      className={`p-4 hover:shadow-md transition-shadow cursor-pointer group ${record.sharedFrom ? 'border-l-4 border-l-indigo-400' : ''}`}
+                      onClick={() => setEditingHealth(record)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-500 flex items-center justify-center shrink-0">
+                            <Icon name="medical_services" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-bold text-stone-800">{record.title}</h4>
+                              {record.sharedFrom && <SharedByBadge sharedFrom={record.sharedFrom} />}
+                            </div>
+                            <p className="text-sm text-stone-500">{record.date} • {record.type}</p>
+                            {record.notes && <p className="mt-2 text-stone-600 text-sm bg-stone-50 p-2 rounded-lg">{record.notes}</p>}
+                            {record.attachments && record.attachments.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {record.attachments.map((url, i) => (
+                                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-100 transition-colors" onClick={e => e.stopPropagation()}>
+                                    <Icon name="attachment" className="text-sm" />
+                                    <span>Attachment {i + 1}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Icon name="chevron_right" className="text-stone-300 group-hover:text-stone-500" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
             </div>
           )}
 

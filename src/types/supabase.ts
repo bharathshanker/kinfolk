@@ -133,6 +133,289 @@ export type Database = {
           },
         ]
       }
+      health_markers: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          lab_max: number | null
+          lab_min: number | null
+          name: string
+          optimal_max: number | null
+          optimal_min: number | null
+          system: string
+          unit: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          lab_max?: number | null
+          lab_min?: number | null
+          name: string
+          optimal_max?: number | null
+          optimal_min?: number | null
+          system: string
+          unit?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          lab_max?: number | null
+          lab_min?: number | null
+          name?: string
+          optimal_max?: number | null
+          optimal_min?: number | null
+          system?: string
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      health_physicals: {
+        Row: {
+          bmi: number | null
+          bp_diastolic: number | null
+          bp_systolic: number | null
+          created_at: string | null
+          created_by: string | null
+          height_cm: number | null
+          hip_cm: number | null
+          id: string
+          measurement_date: string
+          notes: string | null
+          person_id: string
+          resting_hr: number | null
+          waist_cm: number | null
+          waist_hip_ratio: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          bmi?: number | null
+          bp_diastolic?: number | null
+          bp_systolic?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          height_cm?: number | null
+          hip_cm?: number | null
+          id?: string
+          measurement_date: string
+          notes?: string | null
+          person_id: string
+          resting_hr?: number | null
+          waist_cm?: number | null
+          waist_hip_ratio?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          bmi?: number | null
+          bp_diastolic?: number | null
+          bp_systolic?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          height_cm?: number | null
+          hip_cm?: number | null
+          id?: string
+          measurement_date?: string
+          notes?: string | null
+          person_id?: string
+          resting_hr?: number | null
+          waist_cm?: number | null
+          waist_hip_ratio?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_physicals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_physicals_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_ratios: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_optimal: boolean | null
+          person_id: string
+          ratio_code: string
+          report_id: string | null
+          test_date: string
+          value: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_optimal?: boolean | null
+          person_id: string
+          ratio_code: string
+          report_id?: string | null
+          test_date: string
+          value: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_optimal?: boolean | null
+          person_id?: string
+          ratio_code?: string
+          report_id?: string | null
+          test_date?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_ratios_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_ratios_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "health_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_reports: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          lab_name: string | null
+          pdf_url: string | null
+          person_id: string
+          raw_extraction: Json | null
+          report_type: string | null
+          status: string | null
+          test_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          lab_name?: string | null
+          pdf_url?: string | null
+          person_id: string
+          raw_extraction?: Json | null
+          report_type?: string | null
+          status?: string | null
+          test_date: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          lab_name?: string | null
+          pdf_url?: string | null
+          person_id?: string
+          raw_extraction?: Json | null
+          report_type?: string | null
+          status?: string | null
+          test_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_reports_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_values: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_flagged: boolean | null
+          marker_code: string | null
+          marker_name: string | null
+          notes: string | null
+          person_id: string
+          report_id: string | null
+          test_date: string
+          unit: string | null
+          value: number | null
+          value_text: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_flagged?: boolean | null
+          marker_code?: string | null
+          marker_name?: string | null
+          notes?: string | null
+          person_id: string
+          report_id?: string | null
+          test_date: string
+          unit?: string | null
+          value?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_flagged?: boolean | null
+          marker_code?: string | null
+          marker_name?: string | null
+          notes?: string | null
+          person_id?: string
+          report_id?: string | null
+          test_date?: string
+          unit?: string | null
+          value?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_values_marker_code_fkey"
+            columns: ["marker_code"]
+            isOneToOne: false
+            referencedRelation: "health_markers"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "health_values_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_values_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "health_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string | null
@@ -483,4 +766,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
