@@ -176,14 +176,18 @@ export const useHealthDashboard = (personId: string | null) => {
       setMarkers(markerRows);
 
       const reportsList = (reportsRes.data || []).map(toHealthReport);
+      const effectiveByCode = new Map(markerRows.map(marker => [marker.code, marker]));
+      const effectiveByName = new Map(markerRows.map(marker => [normalizeMarkerKey(marker.name), marker]));
+
       const valuesList = (valuesRes.data || []).map((row: any) => {
-        const marker = row.marker_code ? markerRows.find(m => m.code === row.marker_code) : undefined;
+        const mappedCode = row.marker_code || mapMarkerCode({ name: row.marker_name, code: row.marker_code }, effectiveByCode, effectiveByName);
+        const marker = mappedCode ? effectiveByCode.get(mappedCode) : undefined;
         const status: HealthValueStatus = evaluateValueStatus(marker, row.value);
         return {
           id: row.id,
           reportId: row.report_id,
           personId: row.person_id,
-          markerCode: row.marker_code,
+          markerCode: mappedCode,
           markerName: row.marker_name,
           marker,
           value: row.value,
@@ -382,7 +386,8 @@ export const useHealthDashboard = (personId: string | null) => {
 
   const dashboardData: HealthDashboardData = useMemo(() => {
     const allValues = reports.flatMap(r => r.values);
-    const systemSummaries = buildSystemSummaries(allValues, markersByCode);
+    const latestValues = reports[0]?.values ?? [];
+    const systemSummaries = buildSystemSummaries(latestValues, markersByCode);
     const trends = buildTrends(allValues);
     return {
       latestReport: reports[0],

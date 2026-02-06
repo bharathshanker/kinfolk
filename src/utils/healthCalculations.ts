@@ -173,12 +173,17 @@ export const buildTrends = (values: HealthValue[]): MarkerTrend[] => {
 
   return Array.from(grouped.entries()).map(([code, entries]) => {
     const sorted = [...entries].sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime());
-    const dataPoints = sorted.map(item => ({
+    const dedupedByDate = new Map<string, HealthValue>();
+    sorted.forEach(item => {
+      dedupedByDate.set(item.testDate, item);
+    });
+    const dedupedValues = Array.from(dedupedByDate.values());
+    const dataPoints = dedupedValues.map(item => ({
       date: item.testDate,
       value: item.value as number,
     }));
-    const latest = sorted[sorted.length - 1];
-    const previous = sorted.length > 1 ? sorted[sorted.length - 2] : undefined;
+    const latest = dedupedValues[dedupedValues.length - 1] || sorted[sorted.length - 1];
+    const previous = dedupedValues.length > 1 ? dedupedValues[dedupedValues.length - 2] : undefined;
     let trend: MarkerTrend['trend'] = 'STABLE';
     if (previous && latest.value !== null && previous.value !== null) {
       if (latest.value > previous.value) trend = 'IMPROVING';
