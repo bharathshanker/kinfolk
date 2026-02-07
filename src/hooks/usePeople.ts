@@ -497,7 +497,7 @@ export const usePeople = () => {
 
         if (file) {
             const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
+            const fileName = `${crypto.randomUUID()}.${fileExt}`;
             const filePath = `${fileName}`;
 
             const { error: uploadError } = await supabase.storage
@@ -638,7 +638,7 @@ export const usePeople = () => {
             if (files && files.length > 0) {
                 for (const file of files) {
                     const fileExt = file.name.split('.').pop();
-                    const fileName = `${personId}/${Date.now()}_${Math.random()}.${fileExt}`;
+                    const fileName = `${personId}/${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
 
                     const { error: uploadError, data: uploadData } = await supabase.storage
                         .from('Health Records')
@@ -881,7 +881,7 @@ export const usePeople = () => {
         if (!user) return;
 
         const fileExt = file.name.split('.').pop();
-        const fileName = `${personId}-${Math.random()}.${fileExt}`;
+        const fileName = `${personId}-${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -1011,11 +1011,12 @@ export const usePeople = () => {
     const generateInviteToken = async (): Promise<string> => {
         const { data, error } = await supabase.rpc('generate_invite_token');
         if (error) {
-            // Fallback to client-side generation
+            // Fallback to client-side generation using crypto API
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+            const randomValues = crypto.getRandomValues(new Uint32Array(12));
             let result = '';
             for (let i = 0; i < 12; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
+                result += chars.charAt(randomValues[i] % chars.length);
             }
             return result;
         }

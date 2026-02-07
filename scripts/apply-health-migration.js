@@ -51,7 +51,7 @@ async function applyMigration() {
         // Step 2: Create health_docs bucket
         console.log('\n2️⃣ Creating health_docs storage bucket...');
         const { data: bucket, error: bucketError } = await supabase.storage.createBucket('health_docs', {
-            public: true,
+            public: false,
             fileSizeLimit: 52428800, // 50MB
             allowedMimeTypes: ['image/*', 'application/pdf', 'text/*']
         });

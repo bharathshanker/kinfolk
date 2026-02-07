@@ -58,9 +58,6 @@ export const parseHealthReport = async (base64Data: string, mimeType = 'applicat
     throw new Error('Missing VITE_GEMINI_API_KEY in .env file.');
   }
 
-  // Debug log to verify key loading (safe)
-  console.log('[HealthParser] Using API Key starting with:', apiKey.substring(0, 4) + '...');
-
   // Initialize standard Gemini API Client
   const genAI = new GoogleGenerativeAI(apiKey);
 
