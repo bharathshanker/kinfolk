@@ -23,18 +23,42 @@ export const HealthDashboard: React.FC<{
   const [selectedSystem, setSelectedSystem] = useState<SystemSummary | null>(null);
   const [selectedMarkers, setSelectedMarkers] = useState<string[]>([]);
 
+  // Fetch dashboard data once on mount (stable callback via personId)
+  const hasFetchedRef = React.useRef(false);
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     fetchDashboard();
   }, [fetchDashboard]);
 
+  // Auto-select first 3 markers only when we have a report and nothing is selected yet.
+  // Uses a ref to avoid re-triggering when selectedMarkers changes.
+  const hasAutoSelected = React.useRef(false);
   useEffect(() => {
-    if (!dashboardData.latestReport || selectedMarkers.length > 0) return;
+    if (hasAutoSelected.current || !dashboardData.latestReport) return;
     const codes = dashboardData.latestReport.values
       .filter(value => value.markerCode)
       .slice(0, 3)
       .map(value => value.markerCode as string);
-    setSelectedMarkers(codes);
-  }, [dashboardData.latestReport, selectedMarkers.length]);
+    if (codes.length > 0) {
+      hasAutoSelected.current = true;
+      setSelectedMarkers(codes);
+    }
+  }, [dashboardData.latestReport]);
+
+  // Prune selectedMarkers only when a code truly disappears from trends.
+  // Avoids creating a new array reference if nothing actually changes.
+  const availableCodesStr = useMemo(
+    () => dashboardData.trends.map(t => t.markerCode).sort().join(','),
+    [dashboardData.trends]
+  );
+  useEffect(() => {
+    const availableCodes = new Set(availableCodesStr.split(','));
+    setSelectedMarkers(prev => {
+      const filtered = prev.filter(code => availableCodes.has(code));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [availableCodesStr]);
 
   const trendSeries = useMemo(() => {
     return dashboardData.trends
@@ -107,8 +131,8 @@ export const HealthDashboard: React.FC<{
                 <p className="text-sm font-semibold text-stone-800">Trends</p>
                 <p className="text-xs text-stone-400">Compare key markers across reports</p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {dashboardData.trends.slice(0, 6).map(trend => {
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
+                {dashboardData.trends.map(trend => {
                   const isActive = selectedMarkers.includes(trend.markerCode);
                   return (
                     <button

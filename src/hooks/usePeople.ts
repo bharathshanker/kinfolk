@@ -13,12 +13,16 @@ type FinanceRow = Database['public']['Tables']['financial_records']['Row'];
 export const usePeople = () => {
     const [people, setPeople] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
+    const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [profileLinks, setProfileLinks] = useState<ProfileLink[]>([]);
 
-    const fetchPeople = useCallback(async () => {
+    const fetchPeople = useCallback(async (options: { showLoader?: boolean } = {}) => {
+        const { showLoader = false } = options;
         try {
-            setLoading(true);
+            if (showLoader) {
+                setLoading(true);
+            }
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 setPeople([]);
@@ -402,16 +406,21 @@ export const usePeople = () => {
             console.error('Error fetching people:', err);
             setError(err.message);
         } finally {
-            setLoading(false);
+            if (showLoader) {
+                setLoading(false);
+            }
         }
     }, []);
 
     // Fetch on mount and whenever auth state changes
     useEffect(() => {
-        fetchPeople();
+        fetchPeople({ showLoader: true });
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-            fetchPeople();
+        const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+            // Ignore token refresh/initial session events to avoid periodic heavy refetches.
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+                fetchPeople();
+            }
         });
 
         return () => {
@@ -419,114 +428,62 @@ export const usePeople = () => {
         };
     }, [fetchPeople]);
 
+    // Debounced fetch to coalesce rapid realtime events into a single refresh.
+    // Multiple table changes within 2 seconds are batched into one fetchPeople call.
+    const debouncedFetchPeople = useCallback(() => {
+        if (realtimeDebounceRef.current) {
+            clearTimeout(realtimeDebounceRef.current);
+        }
+        realtimeDebounceRef.current = setTimeout(() => {
+            realtimeDebounceRef.current = null;
+            fetchPeople();
+        }, 2000);
+    }, [fetchPeople]);
+
     // Real-time subscriptions for live updates
     useEffect(() => {
         let subscriptions: any[] = [];
+        let cancelled = false;
 
         const setupRealtime = async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user || cancelled) return;
 
-            // Subscribe to todos changes
-            const todosSubscription = supabase
-                .channel('todos-changes')
-                .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'todos' },
-                    () => {
-                        console.log('Todos changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(todosSubscription);
+            const tables = [
+                { channel: 'todos-changes', table: 'todos' },
+                { channel: 'health-changes', table: 'health_records' },
+                { channel: 'notes-changes', table: 'notes' },
+                { channel: 'finance-changes', table: 'financial_records' },
+                { channel: 'item-shares-changes', table: 'item_shares' },
+                { channel: 'person-shares-changes', table: 'person_shares' },
+                { channel: 'profile-links-changes', table: 'profile_links' },
+            ];
 
-            // Subscribe to health_records changes
-            const healthSubscription = supabase
-                .channel('health-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'health_records' },
-                    () => {
-                        console.log('Health records changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(healthSubscription);
-
-            // Subscribe to notes changes
-            const notesSubscription = supabase
-                .channel('notes-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'notes' },
-                    () => {
-                        console.log('Notes changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(notesSubscription);
-
-            // Subscribe to financial_records changes
-            const financeSubscription = supabase
-                .channel('finance-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'financial_records' },
-                    () => {
-                        console.log('Financial records changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(financeSubscription);
-
-            // Subscribe to item_shares changes (for when items are shared with you)
-            const itemSharesSubscription = supabase
-                .channel('item-shares-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'item_shares' },
-                    () => {
-                        console.log('Item shares changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(itemSharesSubscription);
-
-            // Subscribe to person_shares changes
-            const personSharesSubscription = supabase
-                .channel('person-shares-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'person_shares' },
-                    () => {
-                        console.log('Person shares changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(personSharesSubscription);
-
-            // Subscribe to profile_links changes
-            const profileLinksSubscription = supabase
-                .channel('profile-links-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'profile_links' },
-                    () => {
-                        console.log('Profile links changed, refreshing...');
-                        fetchPeople();
-                    }
-                )
-                .subscribe();
-            subscriptions.push(profileLinksSubscription);
+            tables.forEach(({ channel, table }) => {
+                const sub = supabase
+                    .channel(channel)
+                    .on('postgres_changes',
+                        { event: '*', schema: 'public', table },
+                        () => debouncedFetchPeople()
+                    )
+                    .subscribe();
+                subscriptions.push(sub);
+            });
         };
 
         setupRealtime();
 
         return () => {
+            cancelled = true;
+            if (realtimeDebounceRef.current) {
+                clearTimeout(realtimeDebounceRef.current);
+                realtimeDebounceRef.current = null;
+            }
             subscriptions.forEach(sub => {
                 supabase.removeChannel(sub);
             });
         };
-    }, [fetchPeople]);
+    }, [debouncedFetchPeople]);
 
     // ============================================
     // CRUD Operations

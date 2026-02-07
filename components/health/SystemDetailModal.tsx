@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { HealthReport, SystemSummary } from '../../src/types/health';
 import { Modal, Icon, Button } from '../Shared';
 import { MarkerRow } from './MarkerRow';
@@ -12,20 +12,38 @@ export const SystemDetailModal: React.FC<{
 }> = ({ isOpen, onClose, summary, reports }) => {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelectedCode(null);
+  }, [isOpen, summary?.system]);
+
   const trendData = useMemo(() => {
     if (!summary || !selectedCode) return [];
     const points: { date: string; value: number }[] = [];
     reports.forEach(report => {
       report.values.forEach(value => {
-        if (value.markerCode === selectedCode && value.value !== null && value.value !== undefined) {
-          points.push({ date: value.testDate, value: value.value });
+        if (
+          value.markerCode === selectedCode &&
+          value.value !== null &&
+          value.value !== undefined &&
+          Number.isFinite(Number(value.value)) &&
+          value.testDate
+        ) {
+          points.push({ date: value.testDate, value: Number(value.value) });
         }
       });
     });
-    return points.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Deduplicate by date (keep latest value per date)
+    const byDate = new Map<string, { date: string; value: number }>();
+    points.forEach(p => byDate.set(p.date, p));
+    return Array.from(byDate.values()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [reports, selectedCode, summary]);
 
   const selectedMarker = summary?.markers.find(value => value.markerCode === selectedCode)?.marker;
+  const selectedMarkerHasRange = selectedMarker?.optimalMin !== null
+    && selectedMarker?.optimalMin !== undefined
+    && selectedMarker?.optimalMax !== null
+    && selectedMarker?.optimalMax !== undefined;
 
   if (!summary) return null;
 
@@ -50,7 +68,12 @@ export const SystemDetailModal: React.FC<{
               <p className="text-sm font-semibold text-stone-700">{selectedMarker?.name || selectedCode}</p>
               <span className="text-xs text-stone-400">{selectedMarker?.unit}</span>
             </div>
-            <MarkerTrendChart data={trendData} optimalRange={selectedMarker?.optimalMin !== null && selectedMarker?.optimalMax !== null ? { min: selectedMarker!.optimalMin as number, max: selectedMarker!.optimalMax as number } : undefined} />
+            <MarkerTrendChart
+              data={trendData}
+              optimalRange={selectedMarkerHasRange
+                ? { min: selectedMarker!.optimalMin as number, max: selectedMarker!.optimalMax as number }
+                : undefined}
+            />
           </div>
         ) : (
           <div className="bg-stone-50 rounded-2xl p-4 border border-dashed border-stone-200 text-sm text-stone-400">
@@ -69,7 +92,8 @@ export const SystemDetailModal: React.FC<{
             <button
               key={value.id}
               onClick={() => setSelectedCode(value.markerCode || null)}
-              className="text-left w-full"
+              disabled={!value.markerCode}
+              className={`text-left w-full ${value.markerCode ? '' : 'opacity-70 cursor-not-allowed'}`}
             >
               <MarkerRow value={value} />
             </button>
