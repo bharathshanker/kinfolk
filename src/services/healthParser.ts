@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export interface ExtractedMarker {
   name: string;
@@ -51,18 +51,13 @@ const extractJson = (raw: string) => {
 };
 
 export const parseHealthReport = async (base64Data: string, mimeType = 'application/pdf'): Promise<ExtractedReport> => {
-  // Use the VITE_GEMINI_API_KEY from .env
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error('Missing VITE_GEMINI_API_KEY in .env file.');
   }
 
-  // Initialize standard Gemini API Client
-  const genAI = new GoogleGenerativeAI(apiKey);
-
-  // Use gemini-3-flash-preview as requested
-  const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+  const ai = new GoogleGenAI({ apiKey });
 
   // Construct the inline data part
   // @google/generative-ai expects { inlineData: { data: ..., mimeType: ... } }
@@ -73,13 +68,25 @@ export const parseHealthReport = async (base64Data: string, mimeType = 'applicat
     },
   };
 
-  const result = await model.generateContent([
-    EXTRACTION_PROMPT,
-    filePart
-  ]);
-  const response = result.response;
-  const responseText = response.text();
+  try {
+    const response = await ai.models.generateContent({
+      // `gemini-3-flash-preview` requires OAuth/Vertex auth and fails with API keys.
+      // `gemini-2.5-flash-lite-preview-06-17` supports API-key auth used by this app.
+      model: 'gemini-2.5-flash-lite-preview-06-17',
+      contents: [
+        { text: EXTRACTION_PROMPT },
+        filePart,
+      ],
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
 
-  const jsonText = extractJson(responseText);
-  return JSON.parse(jsonText) as ExtractedReport;
+    const responseText = response.text ?? '';
+    const jsonText = extractJson(responseText);
+    return JSON.parse(jsonText) as ExtractedReport;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse report with Gemini: ${message}`);
+  }
 };
