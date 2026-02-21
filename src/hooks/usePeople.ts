@@ -1096,7 +1096,7 @@ export const usePeople = () => {
     const deletePerson = async (personId: string) => {
         const { error } = await supabase.from('people').delete().eq('id', personId);
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.filter(p => p.id !== personId));
     };
 
     // ============================================
@@ -1130,13 +1130,13 @@ export const usePeople = () => {
         });
 
         if (error) throw error;
-        await fetchPeople();
+        // shareRecord creates a PENDING share on the recipient's side; current user's view is unchanged
     };
 
     const unshareRecord = async (shareId: string) => {
         const { error } = await supabase.from('record_shares').delete().eq('id', shareId);
         if (error) throw error;
-        await fetchPeople();
+        // unshareRecord removes a share the current user sent; their own view is unchanged
     };
 
     const getPendingShares = async () => {
@@ -1194,7 +1194,8 @@ export const usePeople = () => {
             .eq('id', personId);
 
         if (error) throw error;
-        await fetchPeople();
+        // linkProfileToUser: update linked_user_id in local state, no refetch needed
+        setPeople(prev => prev.map(p => p.id === personId ? { ...p, linkedUserId: userId } : p));
     };
 
     // Generate a unique invite token
@@ -1514,7 +1515,7 @@ export const usePeople = () => {
             .eq('id', requestId);
 
         if (error) throw error;
-        await fetchPeople();
+        // declineCollaborationRequest only flips a status flag; current user's people list is unchanged
     };
 
     // Remove a collaborator (deactivate profile link but preserve history)
