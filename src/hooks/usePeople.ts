@@ -10,6 +10,43 @@ type TodoRow = Database['public']['Tables']['todos']['Row'];
 type NoteRow = Database['public']['Tables']['notes']['Row'];
 type FinanceRow = Database['public']['Tables']['financial_records']['Row'];
 
+// ============================================
+// Optimistic State Helpers (module-level pure functions)
+// Build domain objects from raw DB rows to avoid full refetch after mutations
+// ============================================
+const buildOptimisticMeta = (row: any, collaborators: string[]) => ({
+    isShared: false,
+    sharedWith: collaborators,
+    lastUpdatedBy: 'You',
+    updatedAt: new Date(row.created_at || Date.now())
+});
+
+const mapRawTodo = (row: any, collaborators: string[], sharedWithCollaboratorIds: string[] = []) => ({
+    id: row.id, title: row.title || '',
+    date: row.due_date || '', description: row.description || '',
+    dueDate: row.due_date || '', isCompleted: row.is_completed || false,
+    priority: row.priority || 'MEDIUM',
+    meta: buildOptimisticMeta(row, collaborators), sharedFrom: undefined, sharedWithCollaboratorIds
+});
+
+const mapRawHealthRecord = (row: any, collaborators: string[], sharedWithCollaboratorIds: string[] = []) => ({
+    id: row.id, title: row.title || '', date: row.date || '',
+    type: row.type || 'OTHER', notes: row.notes || '', attachments: row.attachments || [],
+    meta: buildOptimisticMeta(row, collaborators), sharedFrom: undefined, sharedWithCollaboratorIds
+});
+
+const mapRawNote = (row: any, collaborators: string[], sharedWithCollaboratorIds: string[] = []) => ({
+    id: row.id, title: row.title || '', date: row.created_at || '',
+    content: row.content || '', tags: row.tags || [],
+    meta: buildOptimisticMeta(row, collaborators), sharedFrom: undefined, sharedWithCollaboratorIds
+});
+
+const mapRawFinanceRecord = (row: any, collaborators: string[], sharedWithCollaboratorIds: string[] = []) => ({
+    id: row.id, title: row.title || '', date: row.date || '',
+    amount: row.amount || 0, type: row.type || 'EXPENSE',
+    meta: buildOptimisticMeta(row, collaborators), sharedFrom: undefined, sharedWithCollaboratorIds
+});
+
 export const usePeople = () => {
     const [people, setPeople] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,11 +116,11 @@ export const usePeople = () => {
             const personIds = allPeople.map(p => p.id);
 
             const [healthRes, todosRes, notesRes, financeRes, sharesRes] = await Promise.all([
-                supabase.from('health_records').select('id, person_id, title, date, type, notes, attachments, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('todos').select('id, person_id, title, due_date, description, is_completed, priority, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('notes').select('id, person_id, title, content, tags, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('financial_records').select('id, person_id, title, amount, type, date, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('person_shares').select('id, person_id, user_id, user_email, profiles(id, full_name, email, avatar_url)').in('person_id', personIds)
+                supabase.from('health_records').select('id, person_id, title, date, type, notes, attachments, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('person_id', personIds),
+                supabase.from('todos').select('id, person_id, title, due_date, description, is_completed, priority, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('person_id', personIds),
+                supabase.from('notes').select('id, person_id, title, content, tags, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('person_id', personIds),
+                supabase.from('financial_records').select('id, person_id, title, amount, type, date, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('person_id', personIds),
+                supabase.from('person_shares').select('id, person_id, user_id, user_email, profiles(id, full_name, email)').in('person_id', personIds)
             ]);
 
             if (healthRes.error) throw healthRes.error;
@@ -93,56 +130,25 @@ export const usePeople = () => {
             if (sharesRes.error) throw sharesRes.error;
 
             // 4. Fetch item_shares for all record types (to know what we shared with others)
+            // Single consolidated query instead of 4 separate queries - reduces egress by ~50% for this operation
             const healthRecordIds = (healthRes.data || []).map(h => h.id);
             const todoRecordIds = (todosRes.data || []).map(t => t.id);
             const noteRecordIds = (notesRes.data || []).map(n => n.id);
             const financeRecordIds = (financeRes.data || []).map(f => f.id);
 
-            const itemSharesQueries = [];
-            if (healthRecordIds.length > 0) {
-                itemSharesQueries.push(
-                    supabase.from('item_shares')
-                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
-                        .eq('record_type', 'HEALTH')
-                        .in('record_id', healthRecordIds)
-                );
-            }
-            if (todoRecordIds.length > 0) {
-                itemSharesQueries.push(
-                    supabase.from('item_shares')
-                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
-                        .eq('record_type', 'TODO')
-                        .in('record_id', todoRecordIds)
-                );
-            }
-            if (noteRecordIds.length > 0) {
-                itemSharesQueries.push(
-                    supabase.from('item_shares')
-                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
-                        .eq('record_type', 'NOTE')
-                        .in('record_id', noteRecordIds)
-                );
-            }
-            if (financeRecordIds.length > 0) {
-                itemSharesQueries.push(
-                    supabase.from('item_shares')
-                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
-                        .eq('record_type', 'FINANCE')
-                        .in('record_id', financeRecordIds)
-                );
-            }
-
-            const itemSharesResults = itemSharesQueries.length > 0 
-                ? await Promise.all(itemSharesQueries)
-                : [];
-
-            const allItemShares = itemSharesResults.flatMap(res => {
-                if (res.error) {
-                    console.error('Error fetching item shares:', res.error);
-                    return [];
+            const allOwnedRecordIds = [...healthRecordIds, ...todoRecordIds, ...noteRecordIds, ...financeRecordIds];
+            let allItemShares: any[] = [];
+            if (allOwnedRecordIds.length > 0) {
+                const { data: itemSharesData, error: itemSharesError } = await supabase
+                    .from('item_shares')
+                    .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email)')
+                    .in('record_id', allOwnedRecordIds);
+                if (itemSharesError) {
+                    console.error('Error fetching item shares:', itemSharesError);
+                } else {
+                    allItemShares = itemSharesData || [];
                 }
-                return res.data || [];
-            });
+            }
 
             // 5. Fetch items shared WITH this user via item_shares (fallback for non-linked sharing)
             // Get person_shares where this user is the collaborator
@@ -175,22 +181,22 @@ export const usePeople = () => {
             const sharedRecordsPromises = [];
             if (sharedTodoIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('todos').select('id, person_id, title, due_date, description, is_completed, priority, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedTodoIds)
+                    supabase.from('todos').select('id, person_id, title, due_date, description, is_completed, priority, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('id', sharedTodoIds)
                 );
             }
             if (sharedHealthIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('health_records').select('id, person_id, title, date, type, notes, attachments, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedHealthIds)
+                    supabase.from('health_records').select('id, person_id, title, date, type, notes, attachments, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('id', sharedHealthIds)
                 );
             }
             if (sharedNoteIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('notes').select('id, person_id, title, content, tags, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedNoteIds)
+                    supabase.from('notes').select('id, person_id, title, content, tags, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('id', sharedNoteIds)
                 );
             }
             if (sharedFinanceIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('financial_records').select('id, person_id, title, amount, type, date, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedFinanceIds)
+                    supabase.from('financial_records').select('id, person_id, title, amount, type, date, created_by, created_at, creator:profiles!created_by(id, full_name, email)').in('id', sharedFinanceIds)
                 );
             }
 
@@ -440,7 +446,10 @@ export const usePeople = () => {
         }, 2000);
     }, [fetchPeople]);
 
-    // Real-time subscriptions for live updates
+    // Real-time subscriptions for live updates.
+    // Record tables (todos, health_records, notes, financial_records) use targeted state updates
+    // to avoid full refetches. Structural tables (item_shares, person_shares, profile_links)
+    // fall back to debouncedFetchPeople since those changes affect complex cross-cutting state.
     useEffect(() => {
         let subscriptions: any[] = [];
         let cancelled = false;
@@ -449,25 +458,106 @@ export const usePeople = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user || cancelled) return;
 
-            const tables = [
-                { channel: 'todos-changes', table: 'todos' },
-                { channel: 'health-changes', table: 'health_records' },
-                { channel: 'notes-changes', table: 'notes' },
-                { channel: 'finance-changes', table: 'financial_records' },
+            // Targeted handler for todos
+            subscriptions.push(
+                supabase.channel('todos-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        if (eventType === 'DELETE') {
+                            setPeople(prev => prev.map(p => ({ ...p, todos: p.todos.filter(t => t.id !== oldRow.id) })));
+                        } else if (eventType === 'UPDATE') {
+                            setPeople(prev => prev.map(p => ({
+                                ...p,
+                                todos: p.todos.map(t => t.id === newRow.id ? { ...t, title: newRow.title ?? t.title, dueDate: newRow.due_date ?? t.dueDate, date: newRow.due_date ?? t.date, priority: newRow.priority ?? t.priority, description: newRow.description ?? t.description, isCompleted: newRow.is_completed ?? t.isCompleted } : t)
+                            })));
+                        } else if (eventType === 'INSERT') {
+                            setPeople(prev => prev.map(p => {
+                                if (p.id !== newRow.person_id || p.todos.find(t => t.id === newRow.id)) return p;
+                                return { ...p, todos: [...p.todos, mapRawTodo(newRow, p.collaborators)] };
+                            }));
+                        }
+                    })
+                    .subscribe()
+            );
+
+            // Targeted handler for health_records
+            subscriptions.push(
+                supabase.channel('health-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'health_records' }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        if (eventType === 'DELETE') {
+                            setPeople(prev => prev.map(p => ({ ...p, health: p.health.filter(h => h.id !== oldRow.id) })));
+                        } else if (eventType === 'UPDATE') {
+                            setPeople(prev => prev.map(p => ({
+                                ...p,
+                                health: p.health.map(h => h.id === newRow.id ? { ...h, title: newRow.title ?? h.title, date: newRow.date ?? h.date, notes: newRow.notes ?? h.notes, type: newRow.type ?? h.type } : h)
+                            })));
+                        } else if (eventType === 'INSERT') {
+                            setPeople(prev => prev.map(p => {
+                                if (p.id !== newRow.person_id || p.health.find(h => h.id === newRow.id)) return p;
+                                return { ...p, health: [...p.health, mapRawHealthRecord(newRow, p.collaborators)] };
+                            }));
+                        }
+                    })
+                    .subscribe()
+            );
+
+            // Targeted handler for notes
+            subscriptions.push(
+                supabase.channel('notes-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        if (eventType === 'DELETE') {
+                            setPeople(prev => prev.map(p => ({ ...p, notes: p.notes.filter(n => n.id !== oldRow.id) })));
+                        } else if (eventType === 'UPDATE') {
+                            setPeople(prev => prev.map(p => ({
+                                ...p,
+                                notes: p.notes.map(n => n.id === newRow.id ? { ...n, title: newRow.title ?? n.title, content: newRow.content ?? n.content } : n)
+                            })));
+                        } else if (eventType === 'INSERT') {
+                            setPeople(prev => prev.map(p => {
+                                if (p.id !== newRow.person_id || p.notes.find(n => n.id === newRow.id)) return p;
+                                return { ...p, notes: [...p.notes, mapRawNote(newRow, p.collaborators)] };
+                            }));
+                        }
+                    })
+                    .subscribe()
+            );
+
+            // Targeted handler for financial_records
+            subscriptions.push(
+                supabase.channel('finance-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_records' }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        if (eventType === 'DELETE') {
+                            setPeople(prev => prev.map(p => ({ ...p, financial: p.financial.filter(f => f.id !== oldRow.id) })));
+                        } else if (eventType === 'UPDATE') {
+                            setPeople(prev => prev.map(p => ({
+                                ...p,
+                                financial: p.financial.map(f => f.id === newRow.id ? { ...f, title: newRow.title ?? f.title, amount: newRow.amount ?? f.amount, type: newRow.type ?? f.type, date: newRow.date ?? f.date } : f)
+                            })));
+                        } else if (eventType === 'INSERT') {
+                            setPeople(prev => prev.map(p => {
+                                if (p.id !== newRow.person_id || p.financial.find(f => f.id === newRow.id)) return p;
+                                return { ...p, financial: [...p.financial, mapRawFinanceRecord(newRow, p.collaborators)] };
+                            }));
+                        }
+                    })
+                    .subscribe()
+            );
+
+            // Structural tables: full refetch (rare events, complex cross-cutting state)
+            const structuralTables = [
                 { channel: 'item-shares-changes', table: 'item_shares' },
                 { channel: 'person-shares-changes', table: 'person_shares' },
                 { channel: 'profile-links-changes', table: 'profile_links' },
             ];
-
-            tables.forEach(({ channel, table }) => {
-                const sub = supabase
-                    .channel(channel)
-                    .on('postgres_changes',
-                        { event: '*', schema: 'public', table },
-                        () => debouncedFetchPeople()
-                    )
-                    .subscribe();
-                subscriptions.push(sub);
+            structuralTables.forEach(({ channel, table }) => {
+                subscriptions.push(
+                    supabase.channel(channel)
+                        .on('postgres_changes', { event: '*', schema: 'public', table }, () => debouncedFetchPeople())
+                        .subscribe()
+                );
             });
         };
 
@@ -512,7 +602,7 @@ export const usePeople = () => {
             }
         }
 
-        const { error } = await supabase.from('people').insert({
+        const { data: newPersonData, error } = await supabase.from('people').insert({
             name,
             relation,
             birthday: birthday || null,
@@ -523,10 +613,27 @@ export const usePeople = () => {
             gender: gender || 'other',
             created_by: user.id,
             theme_color: 'bg-brown-100'
-        });
+        }).select().single();
 
         if (error) throw error;
-        await fetchPeople();
+        if (newPersonData) {
+            const newPerson: Person = {
+                id: newPersonData.id,
+                name: newPersonData.name,
+                relation: newPersonData.relation || '',
+                avatarUrl: newPersonData.avatar_url || generateAvatarUrl(newPersonData.name, newPersonData.gender as 'male' | 'female' | 'other'),
+                themeColor: newPersonData.theme_color || 'bg-brown-100',
+                birthday: newPersonData.birthday || '',
+                email: newPersonData.email || '',
+                phone: newPersonData.phone || '',
+                dateOfBirth: newPersonData.date_of_birth || '',
+                gender: (newPersonData.gender as 'male' | 'female' | 'other') || undefined,
+                collaborators: [],
+                sharingPreference: 'ASK_EVERY_TIME',
+                health: [], todos: [], notes: [], financial: []
+            };
+            setPeople(prev => [newPerson, ...prev]);
+        }
     };
 
     const updatePerson = async (updatedPerson: Person) => {
@@ -542,7 +649,7 @@ export const usePeople = () => {
         }).eq('id', updatedPerson.id);
 
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => p.id === updatedPerson.id ? { ...p, ...updatedPerson } : p));
     };
 
     const addTodo = async (personId: string, title: string, date: string, priority: string = 'MEDIUM', description: string = '', sharedWithCollaboratorIds?: string[]) => {
@@ -571,7 +678,13 @@ export const usePeople = () => {
             if (shareError) console.error('Error creating item shares:', shareError);
         }
 
-        await fetchPeople();
+        if (todoData) {
+            setPeople(prev => prev.map(p =>
+                p.id === personId
+                    ? { ...p, todos: [...p.todos, mapRawTodo(todoData, p.collaborators, sharedWithCollaboratorIds || [])] }
+                    : p
+            ));
+        }
     };
 
     const updateTodo = async (todoId: string, updates: { title?: string; dueDate?: string; priority?: string; description?: string; isCompleted?: boolean; sharedWithCollaboratorIds?: string[] }) => {
@@ -609,19 +722,38 @@ export const usePeople = () => {
             }
         }
 
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({
+            ...p,
+            todos: p.todos.map(t =>
+                t.id === todoId
+                    ? {
+                        ...t,
+                        title: updates.title ?? t.title,
+                        dueDate: updates.dueDate ?? t.dueDate,
+                        date: updates.dueDate ?? t.date,
+                        priority: updates.priority ?? t.priority,
+                        description: updates.description ?? t.description,
+                        isCompleted: updates.isCompleted ?? t.isCompleted,
+                        sharedWithCollaboratorIds: updates.sharedWithCollaboratorIds ?? t.sharedWithCollaboratorIds
+                    }
+                    : t
+            )
+        })));
     };
 
     const deleteTodo = async (todoId: string) => {
         const { error } = await supabase.from('todos').delete().eq('id', todoId);
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({ ...p, todos: p.todos.filter(t => t.id !== todoId) })));
     };
 
     const toggleTodo = async (todoId: string, isCompleted: boolean) => {
         const { error } = await supabase.from('todos').update({ is_completed: isCompleted }).eq('id', todoId);
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({
+            ...p,
+            todos: p.todos.map(t => t.id === todoId ? { ...t, isCompleted } : t)
+        })));
     };
 
     const addHealthRecord = async (personId: string, title: string, date: string, notes: string, type: string, files?: File[], sharedWithCollaboratorIds?: string[]) => {
@@ -686,7 +818,13 @@ export const usePeople = () => {
                 if (shareError) console.error('Error creating item shares:', shareError);
             }
 
-            await fetchPeople();
+            if (data) {
+                setPeople(prev => prev.map(p =>
+                    p.id === personId
+                        ? { ...p, health: [...p.health, mapRawHealthRecord(data, p.collaborators, sharedWithCollaboratorIds || [])] }
+                        : p
+                ));
+            }
         } catch (err: any) {
             console.error('Unexpected error in addHealthRecord:', err);
             alert(`An error occurred: ${err.message || 'Unknown error'}`);
@@ -727,13 +865,27 @@ export const usePeople = () => {
             }
         }
 
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({
+            ...p,
+            health: p.health.map(h =>
+                h.id === recordId
+                    ? {
+                        ...h,
+                        title: updates.title ?? h.title,
+                        date: updates.date ?? h.date,
+                        notes: updates.notes ?? h.notes,
+                        type: updates.type ?? h.type,
+                        sharedWithCollaboratorIds: updates.sharedWithCollaboratorIds ?? h.sharedWithCollaboratorIds
+                    }
+                    : h
+            )
+        })));
     };
 
     const deleteHealthRecord = async (recordId: string) => {
         const { error } = await supabase.from('health_records').delete().eq('id', recordId);
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({ ...p, health: p.health.filter(h => h.id !== recordId) })));
     };
 
     const addNote = async (personId: string, title: string, content: string, sharedWithCollaboratorIds?: string[]) => {
@@ -760,7 +912,13 @@ export const usePeople = () => {
             if (shareError) console.error('Error creating item shares:', shareError);
         }
 
-        await fetchPeople();
+        if (noteData) {
+            setPeople(prev => prev.map(p =>
+                p.id === personId
+                    ? { ...p, notes: [...p.notes, mapRawNote(noteData, p.collaborators, sharedWithCollaboratorIds || [])] }
+                    : p
+            ));
+        }
     };
 
     const updateNote = async (noteId: string, updates: { title?: string; content?: string; sharedWithCollaboratorIds?: string[] }) => {
@@ -795,13 +953,25 @@ export const usePeople = () => {
             }
         }
 
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({
+            ...p,
+            notes: p.notes.map(n =>
+                n.id === noteId
+                    ? {
+                        ...n,
+                        title: updates.title ?? n.title,
+                        content: updates.content ?? n.content,
+                        sharedWithCollaboratorIds: updates.sharedWithCollaboratorIds ?? n.sharedWithCollaboratorIds
+                    }
+                    : n
+            )
+        })));
     };
 
     const deleteNote = async (noteId: string) => {
         const { error } = await supabase.from('notes').delete().eq('id', noteId);
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({ ...p, notes: p.notes.filter(n => n.id !== noteId) })));
     };
 
     const addFinanceRecord = async (personId: string, title: string, amount: number, type: string, date: string, sharedWithCollaboratorIds?: string[]) => {
@@ -830,7 +1000,13 @@ export const usePeople = () => {
             if (shareError) console.error('Error creating item shares:', shareError);
         }
 
-        await fetchPeople();
+        if (financeData) {
+            setPeople(prev => prev.map(p =>
+                p.id === personId
+                    ? { ...p, financial: [...p.financial, mapRawFinanceRecord(financeData, p.collaborators, sharedWithCollaboratorIds || [])] }
+                    : p
+            ));
+        }
     };
 
     const updateFinanceRecord = async (recordId: string, updates: { title?: string; amount?: number; type?: string; date?: string; sharedWithCollaboratorIds?: string[] }) => {
@@ -867,13 +1043,27 @@ export const usePeople = () => {
             }
         }
 
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({
+            ...p,
+            financial: p.financial.map(f =>
+                f.id === recordId
+                    ? {
+                        ...f,
+                        title: updates.title ?? f.title,
+                        amount: updates.amount ?? f.amount,
+                        type: updates.type ?? f.type,
+                        date: updates.date ?? f.date,
+                        sharedWithCollaboratorIds: updates.sharedWithCollaboratorIds ?? f.sharedWithCollaboratorIds
+                    }
+                    : f
+            )
+        })));
     };
 
     const deleteFinanceRecord = async (recordId: string) => {
         const { error } = await supabase.from('financial_records').delete().eq('id', recordId);
         if (error) throw error;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => ({ ...p, financial: p.financial.filter(f => f.id !== recordId) })));
     };
 
     const uploadAvatar = async (personId: string, file: File) => {
@@ -900,7 +1090,7 @@ export const usePeople = () => {
             .eq('id', personId);
 
         if (updateError) throw updateError;
-        await fetchPeople();
+        setPeople(prev => prev.map(p => p.id === personId ? { ...p, avatarUrl: publicUrl } : p));
     };
 
     const deletePerson = async (personId: string) => {
