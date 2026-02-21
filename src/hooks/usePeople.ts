@@ -34,7 +34,7 @@ export const usePeople = () => {
             // 1. Fetch People (all accessible to user via RLS)
             const { data: peopleData, error: peopleError } = await supabase
                 .from('people')
-                .select('*')
+                .select('id, name, relation, avatar_url, theme_color, birthday, email, phone, date_of_birth, gender, linked_user_id, sharing_preference, created_by, created_at')
                 .order('created_at', { ascending: false });
 
             if (peopleError) throw peopleError;
@@ -42,7 +42,7 @@ export const usePeople = () => {
             // 2. Fetch profile links for bidirectional sync
             const { data: linksData, error: linksError } = await supabase
                 .from('profile_links')
-                .select('*')
+                .select('id, profile_a_id, profile_b_id, user_a_id, user_b_id, is_active, collaboration_request_id, created_at, updated_at')
                 .eq('is_active', true);
 
             if (!linksError && linksData) {
@@ -79,11 +79,11 @@ export const usePeople = () => {
             const personIds = allPeople.map(p => p.id);
 
             const [healthRes, todosRes, notesRes, financeRes, sharesRes] = await Promise.all([
-                supabase.from('health_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('todos').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('notes').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('financial_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
-                supabase.from('person_shares').select('*, profiles(id, full_name, email, avatar_url)').in('person_id', personIds)
+                supabase.from('health_records').select('id, person_id, title, date, type, notes, attachments, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('todos').select('id, person_id, title, due_date, description, is_completed, priority, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('notes').select('id, person_id, title, content, tags, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('financial_records').select('id, person_id, title, amount, type, date, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('person_id', personIds),
+                supabase.from('person_shares').select('id, person_id, user_id, user_email, profiles(id, full_name, email, avatar_url)').in('person_id', personIds)
             ]);
 
             if (healthRes.error) throw healthRes.error;
@@ -102,7 +102,7 @@ export const usePeople = () => {
             if (healthRecordIds.length > 0) {
                 itemSharesQueries.push(
                     supabase.from('item_shares')
-                        .select('*, profiles:created_by(id, full_name, email, avatar_url)')
+                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
                         .eq('record_type', 'HEALTH')
                         .in('record_id', healthRecordIds)
                 );
@@ -110,7 +110,7 @@ export const usePeople = () => {
             if (todoRecordIds.length > 0) {
                 itemSharesQueries.push(
                     supabase.from('item_shares')
-                        .select('*, profiles:created_by(id, full_name, email, avatar_url)')
+                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
                         .eq('record_type', 'TODO')
                         .in('record_id', todoRecordIds)
                 );
@@ -118,7 +118,7 @@ export const usePeople = () => {
             if (noteRecordIds.length > 0) {
                 itemSharesQueries.push(
                     supabase.from('item_shares')
-                        .select('*, profiles:created_by(id, full_name, email, avatar_url)')
+                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
                         .eq('record_type', 'NOTE')
                         .in('record_id', noteRecordIds)
                 );
@@ -126,7 +126,7 @@ export const usePeople = () => {
             if (financeRecordIds.length > 0) {
                 itemSharesQueries.push(
                     supabase.from('item_shares')
-                        .select('*, profiles:created_by(id, full_name, email, avatar_url)')
+                        .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
                         .eq('record_type', 'FINANCE')
                         .in('record_id', financeRecordIds)
                 );
@@ -158,7 +158,7 @@ export const usePeople = () => {
             if (myPersonShareIds.length > 0) {
                 const { data: sharedItems, error: sharedError } = await supabase
                     .from('item_shares')
-                    .select('*, profiles:created_by(id, full_name, email, avatar_url)')
+                    .select('id, record_type, record_id, person_share_id, created_by, created_at, profiles:created_by(id, full_name, email, avatar_url)')
                     .in('person_share_id', myPersonShareIds);
                 
                 if (!sharedError && sharedItems) {
@@ -175,22 +175,22 @@ export const usePeople = () => {
             const sharedRecordsPromises = [];
             if (sharedTodoIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('todos').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedTodoIds)
+                    supabase.from('todos').select('id, person_id, title, due_date, description, is_completed, priority, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedTodoIds)
                 );
             }
             if (sharedHealthIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('health_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedHealthIds)
+                    supabase.from('health_records').select('id, person_id, title, date, type, notes, attachments, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedHealthIds)
                 );
             }
             if (sharedNoteIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('notes').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedNoteIds)
+                    supabase.from('notes').select('id, person_id, title, content, tags, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedNoteIds)
                 );
             }
             if (sharedFinanceIds.length > 0) {
                 sharedRecordsPromises.push(
-                    supabase.from('financial_records').select('*, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedFinanceIds)
+                    supabase.from('financial_records').select('id, person_id, title, amount, type, date, created_by, created_at, creator:profiles!created_by(id, full_name, email, avatar_url)').in('id', sharedFinanceIds)
                 );
             }
 
@@ -1031,7 +1031,7 @@ export const usePeople = () => {
         // Get person details for snapshot
         const { data: person, error: personError } = await supabase
             .from('people')
-            .select('*')
+            .select('id, name, relation, avatar_url, birthday, email, phone, date_of_birth, gender')
             .eq('id', personId)
             .single();
 
@@ -1081,7 +1081,7 @@ export const usePeople = () => {
         // Get person details for snapshot
         const { data: person, error: personError } = await supabase
             .from('people')
-            .select('*')
+            .select('id, name, relation, avatar_url, birthday, email, phone, date_of_birth, gender')
             .eq('id', personId)
             .single();
 
@@ -1233,7 +1233,7 @@ export const usePeople = () => {
         // First, get the request to find the person_id and requester info
         const { data: request, error: fetchError } = await supabase
             .from('collaboration_requests')
-            .select('*, person:people!person_id(*), requester:profiles!requester_id(*)')
+            .select('id, person_id, requester_id, target_user_id, target_email, status, profile_snapshot, person:people!person_id(id, name, relation, avatar_url, email, birthday), requester:profiles!requester_id(id, full_name, email, avatar_url)')
             .eq('id', requestId)
             .single();
 

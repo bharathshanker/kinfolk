@@ -76,7 +76,8 @@ const toHealthReport = (row: any): HealthReport => ({
   reportType: row.report_type || 'FULL_BODY',
   pdfUrl: row.pdf_url,
   status: (row.status || 'PENDING') as HealthReport['status'],
-  rawExtraction: row.raw_extraction,
+  // raw_extraction is intentionally not fetched in the list query to reduce egress
+  rawExtraction: undefined,
   values: [],
   ratios: [],
   createdAt: row.created_at,
@@ -156,11 +157,12 @@ export const useHealthDashboard = (personId: string | null) => {
       setError(null);
 
       const [markersRes, reportsRes, valuesRes, ratiosRes, physicalsRes] = await Promise.all([
-        supabase.from('health_markers').select('*').order('display_order', { ascending: true }),
-        supabase.from('health_reports').select('*').eq('person_id', personId).order('test_date', { ascending: false }),
-        supabase.from('health_values').select('*').eq('person_id', personId).order('test_date', { ascending: false }),
-        supabase.from('health_ratios').select('*').eq('person_id', personId).order('test_date', { ascending: false }),
-        supabase.from('health_physicals').select('*').eq('person_id', personId).order('measurement_date', { ascending: false }),
+        supabase.from('health_markers').select('id, code, name, unit, system, optimal_min, optimal_max, lab_min, lab_max, description, display_order').order('display_order', { ascending: true }),
+        // raw_extraction is a large JSON blob (~100KB+ per report) only needed for reprocessing, not for display
+        supabase.from('health_reports').select('id, person_id, test_date, lab_name, report_type, pdf_url, status, created_at').eq('person_id', personId).order('test_date', { ascending: false }),
+        supabase.from('health_values').select('id, person_id, report_id, marker_code, marker_name, value, value_text, unit, test_date, is_flagged').eq('person_id', personId).order('test_date', { ascending: false }),
+        supabase.from('health_ratios').select('id, person_id, report_id, ratio_code, value, test_date, is_optimal').eq('person_id', personId).order('test_date', { ascending: false }),
+        supabase.from('health_physicals').select('id, person_id, measurement_date, weight_kg, height_cm, bmi, waist_cm, hip_cm, waist_hip_ratio, bp_systolic, bp_diastolic, resting_hr, notes').eq('person_id', personId).order('measurement_date', { ascending: false }),
       ]);
 
       if (markersRes.error) throw markersRes.error;
