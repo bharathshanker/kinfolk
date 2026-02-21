@@ -24,6 +24,9 @@ import {
 } from '../utils/healthCalculations';
 import { parseHealthReport } from '../services/healthParser';
 
+// Module-level cache for health_markers reference data (static, never changes between sessions)
+let cachedHealthMarkers: any[] | null = null;
+
 const systemIcons: Record<HealthSystem, string> = {
   METABOLIC: 'local_fire_department',
   LIPIDS: 'favorite',
@@ -140,12 +143,16 @@ const mapMarkerCode = (marker: { name?: string | null; code?: string | null }, m
   return byName ? byName.code : null;
 };
 
+const REPORTS_PAGE_SIZE = 20;
+
 export const useHealthDashboard = (personId: string | null) => {
   const [markers, setMarkers] = useState<HealthMarker[]>([]);
   const [reports, setReports] = useState<HealthReport[]>([]);
   const [physicals, setPhysicals] = useState<HealthPhysical[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMoreReports, setHasMoreReports] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const markersByCode = useMemo(() => new Map(markers.map(marker => [marker.code, marker])), [markers]);
   const markersByName = useMemo(() => new Map(markers.map(marker => [normalizeMarkerKey(marker.name), marker])), [markers]);
@@ -156,14 +163,24 @@ export const useHealthDashboard = (personId: string | null) => {
       setLoading(true);
       setError(null);
 
-      const [markersRes, reportsRes, valuesRes, ratiosRes, physicalsRes] = await Promise.all([
-        supabase.from('health_markers').select('id, code, name, unit, system, optimal_min, optimal_max, lab_min, lab_max, description, display_order').order('display_order', { ascending: true }),
+      // Fetch person-specific data; health_markers are cached at module level (static reference data)
+      const [reportsRes, valuesRes, ratiosRes, physicalsRes] = await Promise.all([
         // raw_extraction is a large JSON blob (~100KB+ per report) only needed for reprocessing, not for display
-        supabase.from('health_reports').select('id, person_id, test_date, lab_name, report_type, pdf_url, status, created_at').eq('person_id', personId).order('test_date', { ascending: false }),
+        supabase.from('health_reports').select('id, person_id, test_date, lab_name, report_type, pdf_url, status, created_at').eq('person_id', personId).order('test_date', { ascending: false }).limit(20),
         supabase.from('health_values').select('id, person_id, report_id, marker_code, marker_name, value, value_text, unit, test_date, is_flagged').eq('person_id', personId).order('test_date', { ascending: false }),
         supabase.from('health_ratios').select('id, person_id, report_id, ratio_code, value, test_date, is_optimal').eq('person_id', personId).order('test_date', { ascending: false }),
-        supabase.from('health_physicals').select('id, person_id, measurement_date, weight_kg, height_cm, bmi, waist_cm, hip_cm, waist_hip_ratio, bp_systolic, bp_diastolic, resting_hr, notes').eq('person_id', personId).order('measurement_date', { ascending: false }),
+        supabase.from('health_physicals').select('id, person_id, measurement_date, weight_kg, height_cm, bmi, waist_cm, hip_cm, waist_hip_ratio, bp_systolic, bp_diastolic, resting_hr, notes').eq('person_id', personId).order('measurement_date', { ascending: false }).limit(20),
       ]);
+
+      // Fetch health_markers only if not already cached (static reference data, ~265 rows)
+      if (!cachedHealthMarkers) {
+        const { data: markersData } = await supabase
+          .from('health_markers')
+          .select('id, code, name, unit, system, optimal_min, optimal_max, lab_min, lab_max, description, display_order')
+          .order('display_order', { ascending: true });
+        cachedHealthMarkers = markersData;
+      }
+      const markersRes = { data: cachedHealthMarkers, error: null };
 
       if (markersRes.error) throw markersRes.error;
       if (reportsRes.error) throw reportsRes.error;
@@ -219,7 +236,9 @@ export const useHealthDashboard = (personId: string | null) => {
         if (report) report.ratios.push(ratio);
       });
 
-      setReports(Array.from(reportMap.values()));
+      const fetchedReports = Array.from(reportMap.values());
+      setReports(fetchedReports);
+      setHasMoreReports(fetchedReports.length === REPORTS_PAGE_SIZE);
       setPhysicals((physicalsRes.data || []).map(toHealthPhysical));
     } catch (err: any) {
       console.error('Health dashboard fetch error', err);
@@ -228,6 +247,27 @@ export const useHealthDashboard = (personId: string | null) => {
       setLoading(false);
     }
   }, [personId]);
+
+  const loadMoreReports = useCallback(async () => {
+    if (!personId || loadingMore) return;
+    try {
+      setLoadingMore(true);
+      const { data, error: fetchError } = await supabase
+        .from('health_reports')
+        .select('id, person_id, test_date, lab_name, report_type, pdf_url, status, created_at')
+        .eq('person_id', personId)
+        .order('test_date', { ascending: false })
+        .range(reports.length, reports.length + REPORTS_PAGE_SIZE - 1);
+      if (fetchError) throw fetchError;
+      const newReports = (data || []).map(toHealthReport);
+      setReports(prev => [...prev, ...newReports]);
+      setHasMoreReports(newReports.length === REPORTS_PAGE_SIZE);
+    } catch (err: any) {
+      console.error('Error loading more reports', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [personId, reports.length, loadingMore]);
 
   const addPhysical = useCallback(async (input: Omit<HealthPhysical, 'id' | 'personId'>) => {
     if (!personId) return;
@@ -410,5 +450,8 @@ export const useHealthDashboard = (personId: string | null) => {
     fetchDashboard,
     addPhysical,
     uploadReport,
+    loadMoreReports,
+    hasMoreReports,
+    loadingMore,
   };
 };
